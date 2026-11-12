@@ -31,6 +31,8 @@ export function IsoBox({
       <polygon points={left} fill={shade(color, -0.25)} stroke={stroke} strokeWidth={stroke ? 3 : 0} />
       <polygon points={right} fill={shade(color, -0.45)} stroke={stroke} strokeWidth={stroke ? 3 : 0} />
       <polygon points={top} fill={shade(color, 0.18)} stroke={stroke} strokeWidth={stroke ? 3 : 0} />
+      <polygon points={top} fill="url(#sheen)" opacity={0.5} style={{ pointerEvents: 'none' }} />
+      <polygon points={right} fill="url(#shadeR)" opacity={0.5} style={{ pointerEvents: 'none' }} />
       {children}
     </g>
   );

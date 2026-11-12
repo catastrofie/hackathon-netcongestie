@@ -22,11 +22,9 @@ export default function App() {
           <IsoMap />
           <Objective />
           <LoadCurve />
-        </div>
-        <aside className="side">
           <SidePanel />
           <button className="link restart" onClick={restart}>↺ restart demo</button>
-        </aside>
+        </div>
       </div>
       <Toasts />
       <Intro />

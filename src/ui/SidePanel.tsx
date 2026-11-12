@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { BUILDINGS, NEIGHBOUR_IDS, PROJECTS, GRID_LIMIT_KW } from '../data/park';
+import React, { useMemo } from 'react';
+import { NEIGHBOUR_IDS, PROJECTS, GRID_LIMIT_KW } from '../data/park';
 import { fmtHour, simulate } from '../sim/simulate';
 import { buildingById, useGame } from '../store/game';
 
@@ -172,27 +172,12 @@ function Month2() {
   );
 }
 
-function Welcome() {
-  const { select } = useGame();
-  return (
-    <div className="panel">
-      <div className="panel-head"><div><div className="eyebrow">Bedrijvenpark De Stroomwal</div><h2>Click a building</h2></div></div>
-      <p>Six companies and a neighbourhood share one 2,000 kW connection. Hover to see what each one can offer; click to inspect.</p>
-      <p className="muted">Start with your own company, <button className="link" onClick={() => select('veldman')}>Veldman Metaal</button>.</p>
-      <ul className="legend">
-        {BUILDINGS.filter((b) => b.id !== 'substation').map((b) => (
-          <li key={b.id} onClick={() => select(b.id)}><span className="dot" style={{ background: b.color }} />{b.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export default function SidePanel() {
   const { step, selected } = useGame();
-  if (step === 'committed' || step === 'reinvest') return <TurnReport />;
-  if (step === 'month2') return <Month2 />;
-  if (step === 'negotiate' || step === 'tested') return selected ? <BuildingCard /> : <HubTable />;
-  if (selected) return <BuildingCard />;
-  return <Welcome />;
+  let body: React.ReactNode = null;
+  if (step === 'committed' || step === 'reinvest') body = <TurnReport />;
+  else if (step === 'month2') body = <Month2 />;
+  else if (step === 'negotiate' || step === 'tested') body = selected ? <BuildingCard /> : <HubTable />;
+  else if (selected) body = <BuildingCard />;
+  return <aside className={`side ${body ? 'open' : ''}`}>{body}</aside>;
 }

@@ -1,6 +1,6 @@
 export const TILE_W = 128;
 export const TILE_H = 64;
-export const ORIGIN = { x: 700, y: 70 };
+export const ORIGIN = { x: 840, y: 100 };
 
 /** tile coordinates → screen coordinates of the tile's top corner */
 export function iso(x: number, y: number) {

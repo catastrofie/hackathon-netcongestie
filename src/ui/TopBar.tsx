@@ -1,12 +1,20 @@
 import { useMemo } from 'react';
 import { GRID_LIMIT_KW } from '../data/park';
-import { fmtHour, simulate } from '../sim/simulate';
+import { creditsFor, EMPTY_SCENARIO, fmtHour, simulate } from '../sim/simulate';
 import { useGame } from '../store/game';
 
 export default function TopBar() {
   const { hour, committed, credits, month, clockRunning, toggleClock, setHour, testResult, step, badges } = useGame();
   const sim = useMemo(() => simulate(committed), [committed]);
   const shown = step === 'tested' && testResult ? testResult : sim;
+  const base = useMemo(() => simulate(EMPTY_SCENARIO), []);
+  const impact = useMemo(() => {
+    const c = creditsFor(committed);
+    const peakCut = Math.round((1 - sim.peakKw / base.peakKw) * 100);
+    const co2 = c.dieselAvoided * 60 + sim.co2Tons;
+    const homes = committed.projects.includes('heatnet') ? 180 : 0;
+    return { peakCut, co2, homes, community: sim.communityScore };
+  }, [committed, sim, base]);
   const kw = shown.hourly[hour];
   const pct = kw / GRID_LIMIT_KW;
   const level = pct > 1 ? 'red' : pct > 0.85 ? 'amber' : 'green';
@@ -46,9 +54,18 @@ export default function TopBar() {
         </div>
       </div>
 
+      <div className="impact card">
+        <div className="eyebrow">Community impact · est.</div>
+        <div className="impact-grid">
+          <div><span>Peak cut</span><b className={impact.peakCut > 0 ? 'ok' : ''}>{impact.peakCut > 0 ? `−${impact.peakCut}%` : '0%'}</b></div>
+          <div><span>CO₂ avoided</span><b className={impact.co2 > 0 ? 'ok' : ''}>{impact.co2} t/yr</b></div>
+          <div><span>Homes off gas</span><b className={impact.homes > 0 ? 'ok' : ''}>{impact.homes}</b></div>
+          <div><span>Community</span><b className={impact.community > 0 ? 'ok' : ''}>+{impact.community}</b></div>
+        </div>
+      </div>
       <div className="stats card">
-        <div><div className="muted">Hub Credits</div><div className="big credits">◎ {credits}</div></div>
-        <div><div className="muted">Month</div><div className="big">{month} / 12</div></div>
+        <div><div className="muted">Credits</div><div className="big credits">◎ {credits}</div></div>
+        <div><div className="muted">Month</div><div className="big">{month}/12</div></div>
         <div><div className="muted">Badges</div><div className="big">{badges.length ? '🏅'.repeat(badges.length) : '—'}</div></div>
       </div>
     </div>

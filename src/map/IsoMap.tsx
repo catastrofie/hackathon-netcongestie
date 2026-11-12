@@ -1,60 +1,116 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState, type WheelEvent, type MouseEvent } from 'react';
 import { BUILDINGS, GRID_LIMIT_KW, type Building } from '../data/park';
 import { simulate } from '../sim/simulate';
 import { useGame } from '../store/game';
 import { Bakery, ColdStore, Factory, Greenhouse, Houses, Logistics, Pad, Substation, type BuildingVisual, type VisualState } from './Buildings';
 import { diamond, iso } from './iso';
+import { Canal, CloudShadows, Defs, Feeder, Fence, GravelPad, ParkingLines, Traffic, Tree, WindTurbine } from './Props';
 
 const MAP_W = 10;
 const MAP_H = 9;
+const VB = { w: 1640, h: 820 };
 
 function dayTint(hour: number): { color: string; opacity: number } {
   if (hour >= 22 || hour < 5) return { color: '#2a3568', opacity: 0.45 };
-  if (hour < 7) return { color: '#4d5fa3', opacity: 0.35 };
-  if (hour < 9) return { color: '#ffd9a0', opacity: 0.18 };
+  if (hour < 7) return { color: '#4d5fa3', opacity: 0.32 };
+  if (hour < 9) return { color: '#ffd9a0', opacity: 0.16 };
   if (hour < 16) return { color: '#ffffff', opacity: 0 };
-  if (hour < 18) return { color: '#ffc078', opacity: 0.2 };
-  if (hour < 20) return { color: '#c98aa8', opacity: 0.18 };
+  if (hour < 18) return { color: '#ffc078', opacity: 0.22 };
+  if (hour < 20) return { color: '#c98aa8', opacity: 0.2 };
   return { color: '#3a4580', opacity: 0.35 };
 }
 
-function GroundTiles() {
+function Ground() {
   const tiles = [];
   for (let x = 0; x < MAP_W; x++)
     for (let y = 0; y < MAP_H; y++) {
       const road = x === 3 || y === 3 || y === 6;
-      tiles.push(<polygon key={`${x}-${y}`} points={diamond(x, y, 1, 1)} fill={road ? '#D9D2C5' : (x + y) % 2 ? '#A8D08D' : '#A2CA86'} stroke={road ? '#cbc3b4' : '#9CC281'} strokeWidth={1} />);
+      if (!road) continue;
+      tiles.push(<polygon key={`${x}-${y}`} points={diamond(x, y, 1, 1)} fill="#D9D2C5" stroke="#cbc3b4" strokeWidth={1} />);
     }
-  // road markings
+  const mark = (pts: [number, number][]) => pts.map(([x, y]) => `${iso(x, y).x},${iso(x, y).y}`).join(' ');
   return (
     <g>
+      {/* grass base with texture */}
+      <g filter="url(#grass)">
+        <polygon points={diamond(0, 0, MAP_W, MAP_H)} fill="#A6CF8B" />
+      </g>
+      {/* soft plot edges */}
+      <polygon points={diamond(0, 0, MAP_W, MAP_H)} fill="none" stroke="#8fbd77" strokeWidth={3} />
       {tiles}
-      {[3].map((x) => {
-        const a = iso(x + 0.5, 0), b = iso(x + 0.5, MAP_H);
-        return <line key={x} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fff" strokeWidth={2} strokeDasharray="10 14" opacity={0.7} />;
-      })}
-      {[3].map((y) => {
-        const a = iso(0, y + 0.5), b = iso(MAP_W, y + 0.5);
-        return <line key={y} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fff" strokeWidth={2} strokeDasharray="10 14" opacity={0.7} />;
-      })}
-      {/* a few trees */}
-      {[[9.5, 0.4], [9.4, 3.6], [8.6, 7.4], [9.3, 8.2], [0.3, 8.6], [7.8, 8.6], [0.4, 2.6], [3.2, 8.4], [6.2, 5.8]].map(([tx, ty], i) => {
-        const p = iso(tx, ty);
+      {/* road centre lines */}
+      <polyline points={mark([[3.5, 0], [3.5, MAP_H]])} fill="none" stroke="#fff" strokeWidth={2} strokeDasharray="10 14" opacity={0.75} />
+      <polyline points={mark([[0, 3.5], [MAP_W, 3.5]])} fill="none" stroke="#fff" strokeWidth={2} strokeDasharray="10 14" opacity={0.75} />
+      <polyline points={mark([[0, 6.5], [MAP_W, 6.5]])} fill="none" stroke="#fff" strokeWidth={2} strokeDasharray="10 14" opacity={0.75} />
+      {/* kerbs */}
+      <polyline points={mark([[3, 0], [3, MAP_H]])} fill="none" stroke="#bfb7a6" strokeWidth={1.5} />
+      <polyline points={mark([[4, 0], [4, MAP_H]])} fill="none" stroke="#bfb7a6" strokeWidth={1.5} />
+      {/* bus stop near the houses */}
+      {(() => {
+        const p = iso(5.2, 7.05);
         return (
-          <g key={i}>
-            <ellipse cx={p.x} cy={p.y + 4} rx={12} ry={5} fill="#000" opacity={0.12} />
-            <rect x={p.x - 2} y={p.y - 14} width={4} height={16} fill="#7a5a3a" />
-            <circle cx={p.x} cy={p.y - 22} r={13} fill="#5FA463" />
-            <circle cx={p.x - 5} cy={p.y - 16} r={9} fill="#6DB36F" />
+          <g>
+            <rect x={p.x - 14} y={p.y - 36} width={28} height={20} rx={3} fill="#E9EEF5" stroke="#9aa3b2" />
+            <rect x={p.x - 2} y={p.y - 16} width={4} height={16} fill="#6b7280" />
+            <rect x={p.x - 8} y={p.y - 46} width={16} height={8} rx={2} fill="#3DBE6E" />
           </g>
         );
-      })}
+      })()}
+      {/* plot pads */}
+      <GravelPad x={0.4} y={0.3} w={2.2} d={2.5} />
+      <GravelPad x={4.4} y={0.5} w={2} d={2} />
+      <GravelPad x={0.5} y={4} w={2} d={2.3} />
+      <GravelPad x={4.4} y={4.3} w={2} d={1.1} />
+      <GravelPad x={7.2} y={0.7} w={2} d={2} />
+      <ParkingLines x={0.6} y={6.05} n={6} />
+      <ParkingLines x={6.7} y={4.4} n={4} />
+      <Fence x={7.35} y={4.35} w={1.5} d={1.5} />
+      {/* trees */}
+      {([[9.5, 0.4, 1], [9.4, 3.7, 0.9], [8.7, 7.6, 1.1], [9.3, 8.3, 0.9], [0.4, 8.5, 1], [7.9, 8.6, 0.8], [0.3, 2.95, 0.9], [3.3, 8.5, 1], [6.4, 6.3, 0.8], [8.9, 6.6, 0.9], [2.8, 3.2, 0.7], [7.0, 3.3, 0.8], [9.6, 2.0, 0.9], [8.2, 2.9, 0.8]] as [number, number, number][]).map(([x, y, s], i) => (
+        <Tree key={i} x={x} y={y} s={s} />
+      ))}
     </g>
   );
 }
 
 function center(b: Building) {
   return iso(b.tile[0] + b.footprint[0] / 2, b.tile[1] + b.footprint[1] / 2);
+}
+
+function Cables({ states, heat }: { states: Record<string, VisualState>; heat: boolean }) {
+  const sub = BUILDINGS.find((b) => b.id === 'substation')!;
+  const sc = center(sub);
+  return (
+    <g>
+      {BUILDINGS.filter((b) => b.id !== 'substation').map((b) => {
+        const c = center(b);
+        const st = states[b.id];
+        const col = st === 'congested' ? '#E5484D' : st === 'deal' ? '#3DBE6E' : '#F2A93B';
+        const mid = { x: (c.x + sc.x) / 2, y: Math.max(c.y, sc.y) + 14 };
+        const path = `M ${c.x} ${c.y} Q ${mid.x} ${mid.y} ${sc.x} ${sc.y}`;
+        return (
+          <g key={b.id}>
+            {st === 'deal' && <path d={path} fill="none" stroke="#3DBE6E" strokeWidth={10} opacity={0.25} className="glow" />}
+            <path d={path} fill="none" stroke="#2d3340" strokeWidth={3} opacity={0.35} />
+            <path d={path} fill="none" stroke={col} strokeWidth={3} strokeDasharray="4 14" className={`flow ${st === 'congested' ? 'fast' : ''}`} opacity={0.95} />
+          </g>
+        );
+      })}
+      {heat && (() => {
+        const bk = center(BUILDINGS.find((b) => b.id === 'bakkerij')!);
+        const gh = center(BUILDINGS.find((b) => b.id === 'kassen')!);
+        const co = center(BUILDINGS.find((b) => b.id === 'coop')!);
+        const segs = [`M ${bk.x} ${bk.y + 10} L ${gh.x} ${gh.y + 20}`, `M ${bk.x} ${bk.y + 10} L ${co.x} ${co.y}`];
+        return (
+          <g>
+            {segs.map((d, i) => <path key={`g${i}`} d={d} stroke="#F2A93B" strokeWidth={14} fill="none" strokeLinecap="round" opacity={0.25} className="glow" />)}
+            {segs.map((d, i) => <path key={`p${i}`} d={d} stroke="#F2A93B" strokeWidth={7} fill="none" strokeLinecap="round" className="draw" />)}
+            {segs.map((d, i) => <path key={`f${i}`} d={d} stroke="#fff" strokeWidth={2} fill="none" strokeDasharray="2 12" className="flow" />)}
+          </g>
+        );
+      })()}
+    </g>
+  );
 }
 
 function DealLinks({ dealsWith }: { dealsWith: string[] }) {
@@ -76,41 +132,6 @@ function DealLinks({ dealsWith }: { dealsWith: string[] }) {
   );
 }
 
-function Cables({ states, heat }: { states: Record<string, VisualState>; heat: boolean }) {
-  const sub = BUILDINGS.find((b) => b.id === 'substation')!;
-  const sc = center(sub);
-  return (
-    <g>
-      {BUILDINGS.filter((b) => b.id !== 'substation').map((b) => {
-        const c = center(b);
-        const st = states[b.id];
-        const col = st === 'congested' ? '#E5484D' : st === 'deal' ? '#3DBE6E' : '#F2A93B';
-        const mid = { x: (c.x + sc.x) / 2, y: Math.max(c.y, sc.y) + 10 };
-        const path = `M ${c.x} ${c.y} Q ${mid.x} ${mid.y} ${sc.x} ${sc.y}`;
-        return (
-          <g key={b.id}>
-            <path d={path} fill="none" stroke="#2d3340" strokeWidth={3} opacity={0.35} />
-            <path d={path} fill="none" stroke={col} strokeWidth={3} strokeDasharray="4 14" className={`flow ${st === 'congested' ? 'fast' : ''}`} opacity={0.95} />
-          </g>
-        );
-      })}
-      {heat && (() => {
-        const bk = center(BUILDINGS.find((b) => b.id === 'bakkerij')!);
-        const gh = center(BUILDINGS.find((b) => b.id === 'kassen')!);
-        const co = center(BUILDINGS.find((b) => b.id === 'coop')!);
-        return (
-          <g>
-            <path d={`M ${bk.x} ${bk.y + 10} L ${gh.x} ${gh.y + 20}`} stroke="#F2A93B" strokeWidth={7} fill="none" strokeLinecap="round" className="draw" />
-            <path d={`M ${bk.x} ${bk.y + 10} L ${co.x} ${co.y}`} stroke="#F2A93B" strokeWidth={7} fill="none" strokeLinecap="round" className="draw" />
-            <path d={`M ${bk.x} ${bk.y + 10} L ${gh.x} ${gh.y + 20}`} stroke="#fff" strokeWidth={2} fill="none" strokeDasharray="2 12" className="flow" />
-            <path d={`M ${bk.x} ${bk.y + 10} L ${co.x} ${co.y}`} stroke="#fff" strokeWidth={2} fill="none" strokeDasharray="2 12" className="flow" />
-          </g>
-        );
-      })()}
-    </g>
-  );
-}
-
 export default function IsoMap() {
   const { hour, hovered, selected, committed, step, select, hover, testResult } = useGame();
   const night = hour >= 17 || hour < 7;
@@ -120,83 +141,124 @@ export default function IsoMap() {
   const expanded = committed.expansion;
   const dealsWith = Object.entries(committed.deals).filter(([id, kw]) => kw > 0 && id !== 'veldman').map(([id]) => id);
 
+  // zoom & pan
+  const [view, setView] = useState({ s: 1.08, x: -0.08 * VB.w * 0.5, y: -0.08 * VB.h * 0.45 });
+  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const toLocal = (e: MouseEvent | WheelEvent) => {
+    const r = svgRef.current!.getBoundingClientRect();
+    const k = VB.w / r.width;
+    return { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k };
+  };
+  const onWheel = (e: WheelEvent<SVGSVGElement>) => {
+    const p = toLocal(e);
+    const ns = Math.min(2.6, Math.max(0.8, view.s * (e.deltaY < 0 ? 1.12 : 0.9)));
+    // keep the point under the cursor fixed
+    const nx = p.x - ((p.x - view.x) * ns) / view.s;
+    const ny = p.y - ((p.y - view.y) * ns) / view.s;
+    setView({ s: ns, x: nx, y: ny });
+  };
+  const onDown = (e: MouseEvent<SVGSVGElement>) => { drag.current = { x: e.clientX, y: e.clientY, moved: false }; };
+  const onMove = (e: MouseEvent<SVGSVGElement>) => {
+    if (!drag.current) return;
+    const dx = e.clientX - drag.current.x, dy = e.clientY - drag.current.y;
+    if (!drag.current.moved && Math.hypot(dx, dy) < 4) return;
+    const k = VB.w / svgRef.current!.getBoundingClientRect().width;
+    drag.current = { x: e.clientX, y: e.clientY, moved: true };
+    setView((v) => ({ ...v, x: v.x + dx * k, y: v.y + dy * k }));
+  };
+  const onUp = () => { setTimeout(() => (drag.current = null), 0); };
+  const clickOk = () => !drag.current?.moved;
+
   const states: Record<string, VisualState> = {};
+  const congestedNow = shown.hourly[hour] > GRID_LIMIT_KW;
   for (const b of BUILDINGS) {
     const kw = committed.deals[b.id] ?? 0;
-    const congestedNow = shown.hourly[hour] > GRID_LIMIT_KW;
-    states[b.id] = kw > 0 ? 'deal' : congestedNow && (b.id === 'veldman' || b.id === 'substation' || b.id === 'koelhuis' || b.id === 'logistiek') ? 'congested' : 'idle';
+    states[b.id] = kw > 0 ? 'deal' : congestedNow && ['veldman', 'substation', 'koelhuis', 'logistiek'].includes(b.id) ? 'congested' : 'idle';
   }
   const tint = dayTint(hour);
-
   const sorted = [...BUILDINGS].sort((a, b) => a.tile[0] + a.tile[1] + a.footprint[0] + a.footprint[1] - (b.tile[0] + b.tile[1] + b.footprint[0] + b.footprint[1]));
+  const sub = BUILDINGS.find((b) => b.id === 'substation')!;
 
   return (
-    <svg viewBox="0 0 1400 760" className="map" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <radialGradient id="vignette" cx="50%" cy="45%" r="70%">
-          <stop offset="60%" stopColor="#FFF8EC" stopOpacity="0" />
-          <stop offset="100%" stopColor="#d9c9a8" stopOpacity="0.5" />
-        </radialGradient>
-      </defs>
-      <rect width="1400" height="760" fill="#FBF4E6" />
-      <GroundTiles />
-      <Cables states={states} heat={heat} />
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${VB.w} ${VB.h}`}
+      className={`map ${drag.current?.moved ? 'dragging' : ''}`}
+      preserveAspectRatio="xMidYMid slice"
+      onWheel={onWheel}
+      onMouseDown={onDown}
+      onMouseMove={onMove}
+      onMouseUp={onUp}
+      onMouseLeave={onUp}
+    >
+      <Defs />
+      <rect width={VB.w} height={VB.h} fill="#FBF4E6" />
+      <g transform={`translate(${view.x} ${view.y}) scale(${view.s})`} style={{ transition: drag.current ? 'none' : 'transform 0.15s' }}>
+        <Canal />
+        <Ground />
+        <CloudShadows />
+        <Feeder to={center(sub)} congested={states.substation === 'congested'} />
+        <Cables states={states} heat={heat} />
+        <WindTurbine x={9.6} y={0.9} />
+        <Traffic night={night} />
 
-      {/* expansion ghost / built hall, drawn before veldman so it sits behind */}
-
-      {sorted.map((b) => {
-        const v: BuildingVisual = { x: b.tile[0], y: b.tile[1], w: b.footprint[0], d: b.footprint[1], color: b.color, state: states[b.id], night, hour, solar: b.solarKwp > 0 };
-        const isHover = hovered === b.id;
-        const isSel = selected === b.id;
-        const kwNow = Math.round(shown.perBuilding[b.id][hour]);
-        const c = center(b);
-        return (
-          <g
-            key={b.id}
-            className={`building ${isHover ? 'hover' : ''} ${states[b.id]}`}
-            onMouseEnter={() => hover(b.id)}
-            onMouseLeave={() => hover(null)}
-            onClick={() => select(b.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            {(isHover || isSel) && <Pad x={v.x} y={v.y} w={v.w} d={v.d} color={isSel ? '#ffffff' : '#ffffff'} opacity={isSel ? 0.9 : 0.5} />}
-            {states[b.id] === 'congested' && b.id !== 'substation' && <Pad x={v.x} y={v.y} w={v.w} d={v.d} color="#E5484D" opacity={0.35} />}
-            {b.type === 'factory' && (
-              <>
-                <Factory v={v} />
-                {expanded && <Factory v={{ ...v, x: 0.4, y: 2.05, w: 2.2, d: 0.75, state: 'deal' }} />}
-                {!expanded && (
+        {sorted.map((b) => {
+          const v: BuildingVisual = { x: b.tile[0], y: b.tile[1], w: b.footprint[0], d: b.footprint[1], color: b.color, state: states[b.id], night, hour, solar: b.solarKwp > 0 };
+          const isHover = hovered === b.id;
+          const isSel = selected === b.id;
+          const kwNow = Math.round(shown.perBuilding[b.id][hour]);
+          const c = center(b);
+          return (
+            <g
+              key={b.id}
+              className={`building ${isHover ? 'hover' : ''} ${states[b.id]}`}
+              onMouseEnter={() => hover(b.id)}
+              onMouseLeave={() => hover(null)}
+              onClick={() => clickOk() && select(b.id)}
+              style={{ cursor: 'pointer' }}
+            >
+              {(isHover || isSel) && <Pad x={v.x} y={v.y} w={v.w} d={v.d} color="#ffffff" opacity={isSel ? 0.9 : 0.5} />}
+              {states[b.id] === 'congested' && b.id !== 'substation' && <Pad x={v.x} y={v.y} w={v.w} d={v.d} color="#E5484D" opacity={0.35} />}
+              <g filter={b.type === 'substation' ? undefined : 'url(#shadow)'}>
+                {b.type === 'factory' && (
                   <>
-                    <Factory ghost v={{ x: 0.4, y: 2.05, w: 2.2, d: 0.75, color: '#8a93a3', state: step === 'tested' && testResult && !testResult.congested ? 'deal' : 'idle', night, hour, solar: false }} />
-                    <text x={iso(1.5, 2.45).x} y={iso(1.5, 2.45).y - 72} textAnchor="middle" fontSize={13} fill="#374151" fontWeight={800}>+300 kW</text>
+                    <Factory v={v} />
+                    {expanded && <Factory v={{ ...v, x: 0.4, y: 2.05, w: 2.2, d: 0.75, state: 'deal' }} />}
+                    {!expanded && (
+                      <>
+                        <Factory ghost v={{ x: 0.4, y: 2.05, w: 2.2, d: 0.75, color: '#8a93a3', state: step === 'tested' && testResult && !testResult.congested ? 'deal' : 'idle', night, hour, solar: false }} />
+                        <text x={iso(1.5, 2.45).x} y={iso(1.5, 2.45).y - 72} textAnchor="middle" fontSize={13} fill="#374151" fontWeight={800}>+300 kW</text>
+                      </>
+                    )}
                   </>
                 )}
-              </>
-            )}
-            {b.type === 'coldstore' && <ColdStore v={v} />}
-            {b.type === 'logistics' && <Logistics v={v} />}
-            {b.type === 'bakery' && <Bakery v={v} heat={heat} />}
-            {b.type === 'greenhouse' && <Greenhouse v={v} heat={heat} />}
-            {b.type === 'community' && <Houses v={v} heat={heat} />}
-            {b.type === 'substation' && <Substation v={v} />}
-            {b.id !== 'substation' && (
-              <g className="label">
-                <rect x={c.x - 54} y={c.y + 36} width={108} height={22} rx={11} fill="#1f2937" opacity={0.85} />
-                <text x={c.x} y={c.y + 51} textAnchor="middle" fontSize={12} fill="#fff" fontWeight={700}>
-                  {kwNow < 0 ? `${kwNow} kW ☀` : `${kwNow} kW`}
-                </text>
+                {b.type === 'coldstore' && <ColdStore v={v} />}
+                {b.type === 'logistics' && <Logistics v={v} />}
+                {b.type === 'bakery' && <Bakery v={v} heat={heat} />}
+                {b.type === 'greenhouse' && <Greenhouse v={v} heat={heat} />}
+                {b.type === 'community' && <Houses v={v} heat={heat} />}
+                {b.type === 'substation' && <Substation v={v} />}
               </g>
-            )}
-          </g>
-        );
-      })}
+              {b.id !== 'substation' && (
+                <g className="label">
+                  <rect x={c.x - 54} y={c.y + 36} width={108} height={22} rx={11} fill="#1f2937" opacity={0.85} />
+                  <text x={c.x} y={c.y + 51} textAnchor="middle" fontSize={12} fill="#fff" fontWeight={700}>
+                    {kwNow < 0 ? `${kwNow} kW ☀` : `${kwNow} kW`}
+                  </text>
+                </g>
+              )}
+            </g>
+          );
+        })}
 
-      <DealLinks dealsWith={dealsWith} />
+        <DealLinks dealsWith={dealsWith} />
+      </g>
 
       {/* day/night tint */}
-      <rect width="1400" height="760" fill={tint.color} opacity={tint.opacity} style={{ mixBlendMode: 'multiply', pointerEvents: 'none', transition: 'all 0.6s' }} />
-      <rect width="1400" height="760" fill="url(#vignette)" style={{ pointerEvents: 'none' }} />
-      <text x={20} y={740} fontSize={12} fill="#6b7280">Simulated digital twin · fictional park · figures are illustrative</text>
+      <rect width={VB.w} height={VB.h} fill={tint.color} opacity={tint.opacity} style={{ mixBlendMode: 'multiply', pointerEvents: 'none', transition: 'all 0.6s' }} />
+      <rect width={VB.w} height={VB.h} fill="url(#vignette)" style={{ pointerEvents: 'none' }} />
+      <text x={20} y={VB.h - 16} fontSize={12} fill="#6b7280">Simulated digital twin · fictional park · figures are illustrative · scroll to zoom, drag to pan</text>
     </svg>
   );
 }

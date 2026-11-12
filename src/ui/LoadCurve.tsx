@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { GRID_LIMIT_KW } from '../data/park';
-import { fmtHour, simulate } from '../sim/simulate';
+import { creditsFor, fmtHour, simulate } from '../sim/simulate';
 import { useGame } from '../store/game';
 
 export default function LoadCurve() {
-  const { committed, testResult, showCurve, setShowCurve, hour, setHour } = useGame();
+  const { committed, testResult, showCurve, setShowCurve, hour, setHour, draft } = useGame();
+  const preview = useMemo(() => (testResult ? creditsFor({ ...draft, expansion: true }) : null), [draft, testResult]);
   const before = useMemo(() => simulate(committed), [committed]);
   const data = before.hourly.map((v, h) => ({ h, label: fmtHour(h), before: Math.round(v), after: testResult ? Math.round(testResult.hourly[h]) : undefined }));
 
@@ -22,7 +23,16 @@ export default function LoadCurve() {
             <span><i style={{ background: '#E5484D', height: 2 }} /> 2,000 kW limit</span>
             <span className="muted">Click the chart to move the day clock</span>
           </div>
-          <ResponsiveContainer width="100%" height={170}>
+          {testResult && preview && (
+            <div className="preview">
+              <div><span>Peak</span><b>{Math.round(before.peakKw)} → {Math.round(testResult.peakKw)} kW</b></div>
+              <div><span>Freed at {fmtHour(before.peakHour)}</span><b>{preview.freedKw} kW</b></div>
+              <div><span>Expansion</span><b className={testResult.congested ? 'bad' : 'ok'}>{testResult.congested ? 'blocked' : 'fits ✓'}</b></div>
+              <div><span>Credits if signed</span><b className="credits">◎ {testResult.congested ? 0 : preview.credits}</b></div>
+              <div><span>Diesel avoided</span><b>{testResult.congested ? '—' : '1 · 60 t CO₂/yr'}</b></div>
+            </div>
+          )}
+          <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} onClick={(e) => e && e.activeLabel != null && setHour(Number(String(e.activeLabel).slice(0, 2)))}>
               <CartesianGrid stroke="#eee" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={2} />
