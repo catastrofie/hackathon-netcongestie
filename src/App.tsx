@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import IsoMap from './map/IsoMap';
 import { useGame } from './store/game';
 import LoadCurve from './ui/LoadCurve';
-import { Intro, Objective, RolePick, Title, Toasts } from './ui/Overlays';
+import { Intro, Objective, Refusal, RolePick, Title, Toasts } from './ui/Overlays';
+import ReinvestChoice from './ui/ReinvestChoice';
 import SidePanel from './ui/SidePanel';
 import BatteryChoice from './ui/BatteryChoice';
 import TopBar from './ui/TopBar';
@@ -24,6 +25,7 @@ export default function App() {
         <div className="stage">
           <IsoMap />
           <Objective />
+          <Refusal />
           <LoadCurve />
           <SidePanel />
           <button className="link restart" onClick={restart}>↺ restart demo</button>
@@ -31,6 +33,7 @@ export default function App() {
       </div>
       <Toasts />
       <BatteryChoice />
+      <ReinvestChoice />
       <Intro />
       <RolePick />
       <Title />

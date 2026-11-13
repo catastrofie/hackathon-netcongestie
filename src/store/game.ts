@@ -57,6 +57,9 @@ interface GameState {
   setBattery: (m: BatteryMode) => void;
   setBatterySolar: (v: boolean) => void;
   batteryChoiceOpen: boolean;
+  reinvestOpen: boolean;
+  openReinvest: () => void;
+  closeReinvest: () => void;
   openBatteryChoice: () => void;
   closeBatteryChoice: () => void;
   testScenario: () => void;
@@ -84,6 +87,7 @@ const initial = () => ({
   vote: null as string | null,
   season: 'winter' as Season,
   batteryChoiceOpen: false,
+  reinvestOpen: false,
   draft: { ...EMPTY_SCENARIO, deals: {}, season: 'winter' as Season, battery: 'standby' as BatteryMode },
   committed: { ...EMPTY_SCENARIO, deals: {}, season: 'winter' as Season, battery: 'standby' as BatteryMode },
   testResult: null,
@@ -116,8 +120,8 @@ export const useGame = create<GameState>((set, get) => ({
     const r = simulate({ ...committed, expansion: true });
     const now = simulate(committed);
     if (r.congested) {
-      toast('error', `Connection request refused: the feeder is at ${Math.round(now.utilisation * 100)}% at ${String(now.peakHour).padStart(2, '0')}:00; with +300 kW it would hit ${Math.round(r.utilisation * 100)}%. Queue position: 2029.`);
-      set({ step: 'refused', hour: r.peakHour, clockRunning: false, testResult: r, showCurve: true });
+      void now;
+      set({ step: 'refused', hour: r.peakHour, clockRunning: false, testResult: r, showCurve: true, selected: null });
     } else {
       toast('success', 'Expansion approved.');
     }
@@ -131,6 +135,8 @@ export const useGame = create<GameState>((set, get) => ({
   setBattery: (battery) => set((s) => ({ draft: { ...s.draft, battery }, testResult: null })),
   setBatterySolar: (batterySolar) => set((s) => ({ draft: { ...s.draft, batterySolar }, testResult: null })),
   openBatteryChoice: () => set({ batteryChoiceOpen: true }),
+  openReinvest: () => set({ reinvestOpen: true }),
+  closeReinvest: () => set({ reinvestOpen: false }),
   closeBatteryChoice: () => set({ batteryChoiceOpen: false }),
 
   testScenario: () => {
@@ -175,7 +181,7 @@ export const useGame = create<GameState>((set, get) => ({
     const { credits, committed, toast } = get();
     if (!p || credits < p.cost) return;
     const scenario = { ...committed, projects: [...committed.projects, id] };
-    set({ credits: credits - p.cost, committed: scenario, draft: scenario, step: 'month2' });
+    set({ credits: credits - p.cost, committed: scenario, draft: scenario, step: 'month2', reinvestOpen: false });
     toast('success', id === 'heatnet' ? 'Heat network built: 180 homes off gas.' : 'Second battery module installed: 600 kW / 1,200 kWh.');
   },
 

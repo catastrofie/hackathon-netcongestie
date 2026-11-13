@@ -233,7 +233,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'heatnet',
     name: 'Heat network',
-    cost: 100,
+    cost: 80,
     description: 'Pipe Bakkerij Smid’s waste heat to the greenhouse and 180 homes. Replaces gas; frees ~50 kW of greenhouse electric heating.',
     communityScore: 50,
     co2Tons: 400,
@@ -241,7 +241,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'battery',
     name: 'Second battery module (+300 kW / +600 kWh)',
-    cost: 100,
+    cost: 80,
     description: 'Doubles the cooperative’s battery. Twice the peak shaving, twice the kW-max savings; mostly benefits the companies.',
     communityScore: 15,
     co2Tons: 60,

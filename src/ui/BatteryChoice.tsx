@@ -66,32 +66,30 @@ export default function BatteryChoice() {
       <div className="intro-card wide battery-modal" onClick={(e) => e.stopPropagation()}>
         <div className="eyebrow">Energiecoöperatie Stroomwal · community battery {BATTERY.kw * modules} kW / {BATTERY.kwh * modules} kWh</div>
         <h1>How do you play the battery?</h1>
-        <p className="lead">It discharges {kw} kW during the evening peak either way. The question is what the hub does with that room.</p>
+        <p className="lead">{kw} kW off the evening peak. What does the hub do with it?</p>
         <div className="choice-grid">
           <button className={`choice ${draft.battery === 'bank' ? 'on' : ''}`} onClick={() => pick('bank')}>
             <BankArt />
             <h3>Bank the savings</h3>
-            <p>Lower the park's measured peak and keep the headroom reserved. The hub pays less kW-max charge every month.</p>
+            <p>Lower the kW-max charge, every month.</p>
             <ul>
-              <li>Hub pot <b className="credits">+◎ {saved}</b> every month</li>
-              <li><b className="credits">+◎ {savedNext}</b> at next year's tariff (+55%)</li>
-              <li>Expansion must be covered by neighbours' flexibility</li>
+              <li>Hub pot <b className="credits">+◎ {saved}</b>/month · <b className="credits">+◎ {savedNext}</b> next year</li>
+              <li>Headroom stays reserved</li>
             </ul>
           </button>
           <button className={`choice ${draft.battery === 'grow' ? 'on' : ''}`} onClick={() => pick('grow')}>
             <GrowArt />
             <h3>Make room to grow</h3>
-            <p>Spend the headroom on new activity. The battery's {kw} kW counts toward the capacity Veldman needs to expand.</p>
+            <p>Spend the headroom on new activity.</p>
             <ul>
-              <li><b className="ok">+{kw} kW</b> of headroom for the expansion</li>
-              <li>Fewer neighbour deals needed</li>
-              <li>No kW-max saving from the battery itself</li>
+              <li><b className="ok">+{kw} kW</b> toward the expansion</li>
+              <li>No saving from the battery itself</li>
             </ul>
           </button>
         </div>
         <label className="solar-opt">
           <input type="checkbox" checked={solar} onChange={(e) => setBatterySolar(e.target.checked)} />
-          Charge on midday solar and wind instead of at night (raises the local energy share)
+          Charge on midday solar instead of at night
         </label>
         <div className="modal-foot">
           <button className="link" onClick={() => pick('standby')}>Leave the battery idle</button>

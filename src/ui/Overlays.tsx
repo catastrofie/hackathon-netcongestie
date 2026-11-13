@@ -1,4 +1,5 @@
 import { useGame } from '../store/game';
+import { simulate } from '../sim/simulate';
 import Logo from './Logo';
 
 export function Toasts() {
@@ -24,6 +25,20 @@ const OBJECTIVES: Record<string, string> = {
   reinvest: 'Reinvest the Hub Credits in a shared project.',
   month2: 'Project built. Start Month 2.',
 };
+
+export function Refusal() {
+  const { step, testResult, committed, openHub } = useGame();
+  if (step !== 'refused' || !testResult) return null;
+  const now = Math.round(simulate(committed).utilisation * 100);
+  const would = Math.round(testResult.utilisation * 100);
+  return (
+    <div className="refusal" onClick={openHub}>
+      <div className="refusal-title">⛔ Connection request refused</div>
+      <div className="refusal-sub">Feeder {now}% → <b>{would}%</b> with +300 kW · queue position 2029</div>
+      <div className="refusal-cta">Open the Hub Table →</div>
+    </div>
+  );
+}
 
 export function Objective() {
   const { step, month } = useGame();
@@ -61,22 +76,21 @@ export function RolePick() {
       <div className="intro-card wide">
         <div className="eyebrow">Bedrijvenpark De Stroomwal · one shared 2,000 kW connection</div>
         <h1>Who are you?</h1>
-        <p className="lead">The same park, two seats at the hub table.</p>
         <div className="roles">
           <button className="role" onClick={() => chooseRole('company')}>
             <div className="role-icon">🏭</div>
             <h3>Join as a company</h3>
-            <p>You run Veldman Metaal. You want to grow, the grid says no. Negotiate flexibility with your neighbours and earn the right to expand.</p>
+            <p>Grow within the grid limit.</p>
             <span className="pill green">Full mission</span>
           </button>
           <button className="role" onClick={() => chooseRole('community')}>
             <div className="role-icon">🏘️</div>
             <h3>Join as an energy community</h3>
-            <p>You are Energiecoöperatie Stroomwal, 180 households. Follow the hub's deal, then vote with your members on how the savings get reinvested.</p>
+            <p>Vote on how the hub reinvests.</p>
             <span className="pill amber">Preview</span>
           </button>
         </div>
-        <div className="muted small">Municipalities and grid operators: future roles. Simulated twin, fictional park, no real data.</div>
+        <div className="muted small">Future roles: municipality · grid operator</div>
       </div>
     </div>
   );
