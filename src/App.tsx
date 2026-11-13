@@ -4,6 +4,7 @@ import { useGame } from './store/game';
 import LoadCurve from './ui/LoadCurve';
 import { Intro, Objective, RolePick, Title, Toasts } from './ui/Overlays';
 import SidePanel from './ui/SidePanel';
+import BatteryChoice from './ui/BatteryChoice';
 import TopBar from './ui/TopBar';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
         </div>
       </div>
       <Toasts />
+      <BatteryChoice />
       <Intro />
       <RolePick />
       <Title />

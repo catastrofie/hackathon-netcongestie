@@ -22,6 +22,7 @@ export interface Scenario {
   projects: string[];
   season?: Season;
   battery?: BatteryMode;
+  batterySolar?: boolean; // charge on midday solar instead of at night
 }
 
 export interface SimResult {
@@ -78,7 +79,7 @@ function buildingLoad(b: Building, s: Scenario, season: Season): { net: number[]
   if (b.id === 'coop' && mode !== 'standby') {
     const modules = s.projects.includes('battery') ? 2 : 1;
     const kwh = BATTERY.kwh * modules;
-    const chargeHours = mode === 'peak' ? BATTERY.chargeHoursPeak : BATTERY.chargeHoursSolar;
+    const chargeHours = s.batterySolar ? BATTERY.chargeHoursSolar : BATTERY.chargeHoursNight;
     const chargeKw = Math.min(BATTERY.kw * modules, kwh / chargeHours.length);
     const dischargeKw = (kwh * BATTERY.efficiency) / BATTERY.dischargeHours.length;
     for (const h of chargeHours) load[h] += chargeKw;
@@ -107,6 +108,8 @@ export function simulate(s: Scenario): SimResult {
   const totalGross = gross.reduce((a, b) => a + b, 0);
   const totalGen = generation.reduce((a, b) => a + b, 0);
   const covered = gross.reduce((a, g, h) => a + Math.min(g, generation[h]), 0);
+  const modulesNow = s.projects.includes('battery') ? 2 : 1;
+  const reservedKw = s.battery === 'bank' && s.expansion ? (BATTERY.kwh * modulesNow * BATTERY.efficiency) / BATTERY.dischargeHours.length : 0;
   let peakKw = -Infinity;
   let peakHour = 0;
   const congestedHours: number[] = [];
@@ -115,7 +118,9 @@ export function simulate(s: Scenario): SimResult {
       peakKw = v;
       peakHour = h;
     }
-    if (Math.abs(v) > GRID_LIMIT_KW) congestedHours.push(h);
+    // when the battery's saving is banked, its headroom is reserved and may not be used for the expansion
+    const forApproval = v + (BATTERY.dischargeHours.includes(h) ? reservedKw : 0);
+    if (Math.abs(forApproval) > GRID_LIMIT_KW) congestedHours.push(h);
   });
   const feedIn = hourly.some((v) => v < -GRID_LIMIT_KW);
   const projects = PROJECTS.filter((p) => s.projects.includes(p.id));
@@ -144,16 +149,26 @@ export function simulate(s: Scenario): SimResult {
 
 /** Hub Credits earned by a committed scenario, compared with the baseline. */
 /** Hub Credits earned by a committed scenario: the kW-max charge avoided plus the diesel generator avoided. */
-export function creditsFor(s: Scenario): { credits: number; freedKw: number; dieselAvoided: number; peakSaved: number; peakSavedNextYear: number } {
+export function creditsFor(s: Scenario): { credits: number; freedKw: number; dieselAvoided: number; peakSaved: number; peakSavedNextYear: number; batteryKw: number; batterySaved: number } {
   const base = simulate({ ...EMPTY_SCENARIO, season: s.season });
   const withoutExpansion = simulate({ ...s, expansion: false });
   const freedKw = Math.max(0, Math.round(base.hourly[base.peakHour] - withoutExpansion.hourly[base.peakHour]));
   const dieselAvoided = s.expansion && !simulate(s).congested ? 1 : 0;
-  const peakSaved = Math.round(freedKw * PEAK_TARIFF);
-  const peakSavedNextYear = Math.round(freedKw * PEAK_TARIFF_NEXT_YEAR);
-  return { credits: peakSaved + dieselAvoided * 40, freedKw, dieselAvoided, peakSaved, peakSavedNextYear };
+  // in 'grow' mode the battery's headroom is spent on the expansion, so it earns no kW-max saving
+  const batteryKw = withoutExpansion.batteryKw;
+  const creditedKw = s.battery === 'grow' && s.expansion ? Math.max(0, freedKw - batteryKw) : freedKw;
+  const peakSaved = Math.round(creditedKw * PEAK_TARIFF);
+  const peakSavedNextYear = Math.round(creditedKw * PEAK_TARIFF_NEXT_YEAR);
+  const batterySaved = s.battery === 'bank' ? Math.round(batteryKw * PEAK_TARIFF) : 0;
+  return { credits: peakSaved + dieselAvoided * 40, freedKw, dieselAvoided, peakSaved, peakSavedNextYear, batteryKw, batterySaved };
 }
 
 export function fmtHour(h: number) {
   return `${String(h).padStart(2, '0')}:00`;
+}
+
+/** kW that must be freed at the peak for the expansion to fit, given the committed park. */
+export function kwNeeded(committed: Scenario): number {
+  const r = simulate({ ...committed, deals: {}, battery: 'standby', expansion: true });
+  return Math.max(0, Math.ceil((r.peakKw - GRID_LIMIT_KW) / 10) * 10);
 }

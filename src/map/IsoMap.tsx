@@ -136,7 +136,7 @@ export default function IsoMap() {
   const { hour, hovered, selected, committed, step, select, hover, testResult, season } = useGame();
   const night = hour >= DAYLIGHT[season][1] || hour < DAYLIGHT[season][0];
   const sim = useMemo(() => simulate(committed), [committed]);
-  const shown = step === 'tested' && testResult ? testResult : sim;
+  const shown = (step === 'tested' || step === 'refused') && testResult ? testResult : sim;
   const heat = committed.projects.includes('heatnet');
   const expanded = committed.expansion;
   const dealsWith = Object.entries(committed.deals).filter(([id, kw]) => kw > 0 && id !== 'veldman').map(([id]) => id);

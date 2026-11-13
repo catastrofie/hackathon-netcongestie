@@ -5,7 +5,7 @@ import { creditsFor, fmtHour, simulate } from '../sim/simulate';
 import { useGame } from '../store/game';
 
 export default function LoadCurve() {
-  const { committed, testResult, showCurve, setShowCurve, hour, setHour, draft } = useGame();
+  const { committed, testResult, showCurve, setShowCurve, hour, setHour, draft, step } = useGame();
   const preview = useMemo(() => (testResult ? creditsFor({ ...draft, expansion: true }) : null), [draft, testResult]);
   const before = useMemo(() => simulate(committed), [committed]);
   const data = before.hourly.map((v, h) => ({ h, label: fmtHour(h), before: Math.round(v), gen: Math.round(before.generation[h]), gross: Math.round(before.gross[h]), after: testResult ? Math.round(testResult.hourly[h]) : undefined }));
@@ -22,11 +22,11 @@ export default function LoadCurve() {
             <span className="local-share">☀ Locally produced: <b>{Math.round(before.localShare * 100)}%</b> of today's consumption · {Math.round(before.selfConsumed * 100)}% self-consumed · {seasonName} day</span>
             <span><i style={{ background: '#F2C14E' }} /> Solar + wind</span>
             <span><i style={{ background: '#9ca3af' }} /> From the grid (net)</span>
-            {testResult && <span><i style={{ background: testResult.congested ? '#E5484D' : '#3DBE6E' }} /> With deals + expansion</span>}
+            {testResult && <span><i style={{ background: testResult.congested ? '#E5484D' : '#3DBE6E' }} /> {step === 'refused' ? 'If Veldman expands (+300 kW)' : 'With deals + expansion'}</span>}
             <span><i style={{ background: '#E5484D', height: 2 }} /> 2,000 kW limit</span>
             <span className="muted">Click the chart to move the day clock</span>
           </div>
-          {testResult && preview && (
+          {testResult && preview && step !== 'refused' && (
             <div className="preview">
               <div><span>Peak</span><b>{Math.round(before.peakKw)} → {Math.round(testResult.peakKw)} kW</b></div>
               <div><span>Expansion</span><b className={testResult.congested ? 'bad' : 'ok'}>{testResult.congested ? 'blocked' : 'fits ✓'}</b></div>

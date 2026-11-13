@@ -39,7 +39,7 @@ interface GameState {
   testResult: SimResult | null;
   toasts: Toast[];
   showCurve: boolean;
-  lastReport: { credits: number; freedKw: number; dieselAvoided: number; peakSaved: number; peakSavedNextYear: number; peakBefore: number; peakAfter: number; batteryKw: number } | null;
+  lastReport: { credits: number; freedKw: number; dieselAvoided: number; peakSaved: number; peakSavedNextYear: number; peakBefore: number; peakAfter: number; batteryKw: number; batterySaved: number; batteryMode: BatteryMode } | null;
 
   // actions
   setHour: (h: number) => void;
@@ -55,6 +55,10 @@ interface GameState {
   openHub: () => void;
   setDeal: (id: string, kw: number) => void;
   setBattery: (m: BatteryMode) => void;
+  setBatterySolar: (v: boolean) => void;
+  batteryChoiceOpen: boolean;
+  openBatteryChoice: () => void;
+  closeBatteryChoice: () => void;
   testScenario: () => void;
   endMonth: () => void;
   buyProject: (id: string) => void;
@@ -79,6 +83,7 @@ const initial = () => ({
   role: 'company' as Role,
   vote: null as string | null,
   season: 'winter' as Season,
+  batteryChoiceOpen: false,
   draft: { ...EMPTY_SCENARIO, deals: {}, season: 'winter' as Season, battery: 'standby' as BatteryMode },
   committed: { ...EMPTY_SCENARIO, deals: {}, season: 'winter' as Season, battery: 'standby' as BatteryMode },
   testResult: null,
@@ -111,19 +116,22 @@ export const useGame = create<GameState>((set, get) => ({
     const r = simulate({ ...committed, expansion: true });
     const now = simulate(committed);
     if (r.congested) {
-      toast('error', `Connection request refused: feeder already at ${Math.round(now.utilisation * 100)}% at ${String(now.peakHour).padStart(2, '0')}:00; with +300 kW it would hit ${Math.round(r.utilisation * 100)}%. Queue position: 2029.`);
-      set({ step: 'refused', hour: r.peakHour, clockRunning: false });
+      toast('error', `Connection request refused: the feeder is at ${Math.round(now.utilisation * 100)}% at ${String(now.peakHour).padStart(2, '0')}:00; with +300 kW it would hit ${Math.round(r.utilisation * 100)}%. Queue position: 2029.`);
+      set({ step: 'refused', hour: r.peakHour, clockRunning: false, testResult: r, showCurve: true });
     } else {
       toast('success', 'Expansion approved.');
     }
   },
 
-  openHub: () => set({ step: 'negotiate', selected: null, showCurve: false }),
+  openHub: () => set({ step: 'negotiate', selected: null, showCurve: false, testResult: null, clockRunning: true }),
 
   setDeal: (id, kw) =>
     set((s) => ({ draft: { ...s.draft, deals: { ...s.draft.deals, [id]: kw } }, testResult: null })),
 
   setBattery: (battery) => set((s) => ({ draft: { ...s.draft, battery }, testResult: null })),
+  setBatterySolar: (batterySolar) => set((s) => ({ draft: { ...s.draft, batterySolar }, testResult: null })),
+  openBatteryChoice: () => set({ batteryChoiceOpen: true }),
+  closeBatteryChoice: () => set({ batteryChoiceOpen: false }),
 
   testScenario: () => {
     const { draft, toast } = get();
@@ -157,7 +165,7 @@ export const useGame = create<GameState>((set, get) => ({
       showCurve: false,
       clockRunning: true,
       selected: null,
-      lastReport: { ...c, peakBefore: before.peakKw, peakAfter: r.peakKw, batteryKw: r.batteryKw },
+      lastReport: { ...c, peakBefore: before.peakKw, peakAfter: r.peakKw, batteryKw: r.batteryKw, batteryMode: scenario.battery ?? 'standby' },
     }));
     setTimeout(() => toast('badge', 'Badge earned: First Handshake'), 900);
   },

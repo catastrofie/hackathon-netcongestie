@@ -19,14 +19,14 @@ npm run build      # static site in dist/
 | --- | --- |
 | `src/data/park.ts` | The whole world: buildings, 24-hour load profiles, flex offers, projects, grid limit |
 | `src/sim/simulate.ts` | Pure simulation: scenario → hourly feeder load, peak, congestion, credits |
-| `src/sim/simulate.test.ts` | Tests that the mission numbers hold (baseline 105%, package fits, midday overload fails) |
+| `src/sim/simulate.test.ts` | Tests that the mission numbers hold (baseline 97%, expansion alone refused, package fits, midday overload fails) |
 | `src/store/game.ts` | Game state and the mission steps (Zustand) |
 | `src/map/` | Isometric map, SVG buildings, cables, day/night tint |
 | `src/ui/` | Top bar with capacity meter, side panel (building card, Hub Table, turn report), load curve, toasts, intro |
 
 ## Mission 1: Room to grow
 
-1. Click Veldman Metaal → *Expand* → refused (feeder at 105% at 17:00).
+1. Click Veldman Metaal → *Expand* → refused: the feeder is at 97% and the expansion would push it to 112%.
 2. Open the Hub Table, switch on neighbours' offers, tune the sliders.
 3. *Test scenario* redraws the 24-hour curve; capacity moves, it doesn't disappear.
 4. *Sign deals & end month* → park animates, turn report, 120 Hub Credits, badge.

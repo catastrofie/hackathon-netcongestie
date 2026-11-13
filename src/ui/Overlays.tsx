@@ -17,7 +17,7 @@ export function Toasts() {
 
 const OBJECTIVES: Record<string, string> = {
   explore: 'Click Veldman Metaal and request the expansion.',
-  refused: 'Free 400 kW at the evening peak. Open the Hub Table.',
+  refused: 'The expansion would overload the feeder. Free 250 kW at the evening peak: open the Hub Table.',
   negotiate: 'Assemble a package of offers, then Test scenario.',
   tested: 'If the curve stays under the red line: sign and end the month.',
   committed: 'Reinvest the Hub Credits in a shared project.',

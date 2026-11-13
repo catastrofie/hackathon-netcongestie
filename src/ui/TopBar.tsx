@@ -7,7 +7,7 @@ export default function TopBar() {
   const { hour, committed, credits, month, clockRunning, toggleClock, setHour, testResult, step, badges, season, setSeason } = useGame();
   const seasonLocked = step === 'negotiate' || step === 'tested';
   const sim = useMemo(() => simulate(committed), [committed]);
-  const shown = step === 'tested' && testResult ? testResult : sim;
+  const shown = (step === 'tested' || step === 'refused') && testResult ? testResult : sim;
   const base = useMemo(() => simulate({ ...EMPTY_SCENARIO, season }), [season]);
   const impact = useMemo(() => {
     const c = creditsFor(committed);
@@ -23,7 +23,7 @@ export default function TopBar() {
   return (
     <div className="topbar">
       <div className="clock card" onClick={toggleClock} title="Click to pause / play the day">
-        <svg viewBox="0 0 64 64" width={52} height={52}>
+        <svg viewBox="0 0 64 64" width={44} height={44}>
           <circle cx={32} cy={32} r={29} fill="#fff" stroke="#e5e7eb" strokeWidth={3} />
           {Array.from({ length: 24 }).map((_, i) => {
             const a = (i / 24) * Math.PI * 2 - Math.PI / 2;
@@ -32,16 +32,16 @@ export default function TopBar() {
           <line x1={32} y1={32} x2={32 + Math.cos((hour / 24) * Math.PI * 2 - Math.PI / 2) * 21} y2={32 + Math.sin((hour / 24) * Math.PI * 2 - Math.PI / 2) * 21} stroke="#111827" strokeWidth={3} strokeLinecap="round" />
           <circle cx={32} cy={32} r={3} fill="#111827" />
         </svg>
-        <div>
-          <div className="big">{fmtHour(hour)}</div>
-          <div className="muted">{clockRunning ? 'weekday ▶' : 'paused ⏸'}</div>
-        </div>
-        <div className="seasons" onClick={(e) => e.stopPropagation()} title={seasonLocked ? 'Finish the month first' : 'Change season'}>
-          {SEASONS.map((sn) => (
-            <button key={sn} className={`season ${season === sn ? 'on' : ''}`} disabled={seasonLocked} onClick={() => setSeason(sn)}>
-              {{ winter: '❄', spring: '🌱', summer: '☀', autumn: '🍂' }[sn]} <span>{SEASON_LABEL[sn]}</span>
-            </button>
-          ))}
+        <div className="clock-text">
+          <div className="big">{fmtHour(hour)} <span className="muted">{clockRunning ? '▶' : '⏸'}</span></div>
+          <div className="seasons" onClick={(e) => e.stopPropagation()}>
+            {SEASONS.map((sn) => (
+              <button key={sn} className={`season ${season === sn ? 'on' : ''}`} disabled={seasonLocked} onClick={() => setSeason(sn)} title={seasonLocked ? 'Finish the month first' : SEASON_LABEL[sn]}>
+                {{ winter: '❄', spring: '🌱', summer: '☀', autumn: '🍂' }[sn]}
+              </button>
+            ))}
+            <span className="muted season-name">{SEASON_LABEL[season]}</span>
+          </div>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export default function TopBar() {
       <div className="impact card">
         <div className="eyebrow impact-title">Community impact · est.</div>
         <div className="tile"><b className={impact.peakCut > 0 ? 'ok' : ''}>{impact.peakCut > 0 ? `−${impact.peakCut}%` : '0%'}</b><span>Peak cut</span></div>
-        <div className="tile"><b className={impact.co2 > 0 ? 'ok' : ''}>{impact.co2}<small> t</small></b><span>CO₂ avoided / yr</span></div>
+        <div className="tile"><b className={impact.co2 > 0 ? 'ok' : ''}>{impact.co2}<small> t/yr</small></b><span>CO₂ avoided</span></div>
         <div className="tile"><b className={impact.homes > 0 ? 'ok' : ''}>{impact.homes}</b><span>Homes off gas</span></div>
         <div className="tile"><b className="ok">{Math.round(sim.localShare * 100)}%</b><span>Local energy</span></div>
       </div>

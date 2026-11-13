@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { BATTERY, BATTERY_MODES, NEIGHBOUR_IDS, PROJECTS, GRID_LIMIT_KW } from '../data/park';
-import { fmtHour, simulate } from '../sim/simulate';
+import { BATTERY, NEIGHBOUR_IDS, PROJECTS, GRID_LIMIT_KW } from '../data/park';
+import { fmtHour, kwNeeded, simulate } from '../sim/simulate';
 import { buildingById, useGame } from '../store/game';
 
 function BuildingCard() {
@@ -57,18 +57,19 @@ function BuildingCard() {
 }
 
 function HubTable() {
-  const { draft, setDeal, setBattery, testScenario, testResult, endMonth, step, select, committed } = useGame();
+  const { draft, setDeal, openBatteryChoice, testScenario, testResult, endMonth, step, select, committed } = useGame();
   const parties = ['koelhuis', 'logistiek', 'veldman'].map(buildingById);
   const modules = committed.projects.includes('battery') ? 2 : 1;
   const batteryKw = (draft.battery ?? 'standby') === 'standby' ? 0 : Math.round((BATTERY.kwh * modules * BATTERY.efficiency) / BATTERY.dischargeHours.length);
-  const freed = parties.reduce((a, b) => a + (draft.deals[b.id] ?? 0), 0) + batteryKw;
+  const freed = parties.reduce((a, b) => a + (draft.deals[b.id] ?? 0), 0) + (draft.battery === 'grow' ? batteryKw : 0);
+  const needed = kwNeeded(committed);
   const ok = testResult && !testResult.congested;
   return (
     <div className="panel">
       <div className="panel-head">
         <div>
           <div className="eyebrow">Hub Table · Month 1</div>
-          <h2>Find 400 kW at the evening peak</h2>
+          <h2>Find {needed} kW at the evening peak</h2>
           <div className="muted">Every offer moves load to another hour. Test before you sign.</div>
         </div>
       </div>
@@ -104,19 +105,16 @@ function HubTable() {
             <b>Energiecoöperatie Stroomwal</b>
             <div className="muted">Community battery {BATTERY.kw * modules} kW / {BATTERY.kwh * modules} kWh · owned by all members</div>
           </div>
-          <span className="pill purple">🔋 {batteryKw > 0 ? `−${batteryKw} kW at peak` : 'idle'}</span>
+          <span className={`pill ${draft.battery === 'bank' ? 'gold' : draft.battery === 'grow' ? 'green' : 'purple'}`}>
+            🔋 {draft.battery === 'bank' ? `banking −${batteryKw} kW` : draft.battery === 'grow' ? `+${batteryKw} kW to grow` : 'idle'}
+          </span>
         </div>
-        <div className="segmented">
-          {BATTERY_MODES.map((m) => (
-            <button key={m.id} className={(draft.battery ?? 'standby') === m.id ? 'on' : ''} onClick={() => setBattery(m.id)}>{m.label}</button>
-          ))}
-        </div>
-        <div className="muted" style={{ marginTop: 6 }}>{BATTERY_MODES.find((m) => m.id === (draft.battery ?? 'standby'))!.detail}</div>
-        <div className="counter">Wants: 40% of the avoided kW-max charge back to the members.</div>
+        <button className="secondary play-card" onClick={openBatteryChoice}>🃏 Play the battery card</button>
+        <div className="counter">Savings and freed capacity go to the Hub pot.</div>
       </div>
       <div className="sum">
         <span>Freed at 17:00</span>
-        <b className={freed >= 400 ? 'ok' : ''}>{freed} / 400 kW</b>
+        <b className={freed >= needed ? 'ok' : ''}>{freed} / {needed} kW</b>
       </div>
       <div className="actions">
         <button className="secondary" onClick={testScenario} disabled={freed === 0}>📈 Test scenario</button>
@@ -150,7 +148,10 @@ function TurnReport() {
           <tr><td>Peak</td><td><b>{Math.round(lastReport.peakBefore)} → {Math.round(lastReport.peakAfter)} kW</b></td></tr>
           <tr><td>Expansion</td><td><b className="ok">Approved · +300 kW</b></td></tr>
           <tr><td>Hub Credits earned</td><td><b className="credits">◎ {lastReport.credits}</b></td></tr>
-          <tr><td className="muted">= kW-max avoided ◎ {lastReport.peakSaved}/mo + no diesel ◎ 40</td><td className="muted">next yr ◎ {lastReport.peakSavedNextYear}/mo</td></tr>
+          <tr><td className="muted">= flex saves kW-max ◎ {lastReport.peakSaved}/mo + no diesel ◎ 40</td><td className="muted">next yr ◎ {lastReport.peakSavedNextYear}/mo</td></tr>
+          {lastReport.batteryMode !== 'standby' && (
+            <tr><td className="muted">🔋 Battery</td><td className="muted">{lastReport.batteryMode === 'bank' ? `banked ◎ ${lastReport.batterySaved}/mo` : `${lastReport.batteryKw} kW spent on growth`}</td></tr>
+          )}
           <tr><td>Badge</td><td><b>🏅 {badges[badges.length - 1]}</b></td></tr>
         </tbody>
       </table>

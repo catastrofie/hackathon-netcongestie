@@ -62,13 +62,9 @@ export const PEAK_TARIFF = 0.2;
 export const PEAK_TARIFF_NEXT_YEAR = Math.round(PEAK_TARIFF * 1.552 * 1000) / 1000;
 
 /** The cooperative's community battery, a shared hub asset from the start. */
-export type BatteryMode = 'standby' | 'peak' | 'solar';
-export const BATTERY = { kw: 300, kwh: 600, efficiency: 0.9, chargeHoursPeak: [0, 1, 2, 3], chargeHoursSolar: [11, 12, 13, 14], dischargeHours: [16, 17, 18, 19] };
-export const BATTERY_MODES: { id: BatteryMode; label: string; detail: string }[] = [
-  { id: 'standby', label: 'Stand-by', detail: 'Battery idle. Nothing changes.' },
-  { id: 'peak', label: 'Peak shaving', detail: 'Charge at night, discharge 16:00–20:00. Cuts the park peak and the kW-max charge.' },
-  { id: 'solar', label: 'Solar self-use', detail: 'Charge on midday solar and wind, discharge 16:00–20:00. Raises local energy share.' },
-];
+/** How the hub plays the battery: idle, bank the kW-max saving, or spend the headroom on growth. */
+export type BatteryMode = 'standby' | 'bank' | 'grow';
+export const BATTERY = { kw: 300, kwh: 600, efficiency: 0.9, chargeHoursNight: [0, 1, 2, 3], chargeHoursSolar: [11, 12, 13, 14], dischargeHours: [16, 17, 18, 19] };
 export const PEAK_HOUR = 17;
 
 export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
@@ -144,7 +140,7 @@ export const BUILDINGS: Building[] = [
     footprint: [2, 2],
     color: '#5B8DB8',
     tagline: 'Cold storage · 24/7 cold chain',
-    load: profile(380, { '8-10': 420, '11-13': 460, '14': 420, '15': 400, '16-17': 480, '18-19': 460, '20-21': 420 }),
+    load: profile(380, { '8-10': 420, '11-13': 460, '14': 420, '15': 400, '16-17': 430, '18-19': 410, '20-21': 400 }),
     solarKwp: 200,
     flex: {
       label: 'Pre-cool at midday, coast through the peak',
@@ -166,7 +162,7 @@ export const BUILDINGS: Building[] = [
     footprint: [2, 1.9],
     color: '#E0A33B',
     tagline: 'Distribution centre · 12 e-trucks',
-    load: profile(80, { '6-7': 200, '8-10': 260, '11-14': 300, '15': 220, '16-19': 400, '20': 200, '21': 120 }),
+    load: profile(80, { '6-7': 200, '8-10': 260, '11-14': 300, '15': 220, '16-19': 350, '20': 200, '21': 120 }),
     solarKwp: 400,
     flex: {
       label: 'Charge e-trucks at night',
@@ -188,7 +184,7 @@ export const BUILDINGS: Building[] = [
     footprint: [2, 1.1],
     color: '#B5543F',
     tagline: 'Industrial bakery · ovens run at night',
-    load: profile(120, { '1-6': 300, '7': 200, '11-14': 140, '16-19': 160 }),
+    load: profile(120, { '1-6': 300, '7': 200, '11-14': 140, '16-19': 110 }),
     solarKwp: 0,
     wants: 'Cheaper energy · 200 kW of waste heat goes up the chimney',
   },
