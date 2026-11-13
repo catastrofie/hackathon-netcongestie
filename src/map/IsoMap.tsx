@@ -176,7 +176,8 @@ export default function IsoMap() {
     const kw = committed.deals[b.id] ?? 0;
     states[b.id] = kw > 0 ? 'deal' : congestedNow && ['veldman', 'substation', 'koelhuis', 'logistiek'].includes(b.id) ? 'congested' : 'idle';
   }
-  const tint = dayTint(hour);
+  const tint = step === 'title' || step === 'role' ? { color: '#ffb866', opacity: 0.26 } : dayTint(hour);
+  const cinematic = step === 'title' || step === 'role';
   const sorted = [...BUILDINGS].sort((a, b) => a.tile[0] + a.tile[1] + a.footprint[0] + a.footprint[1] - (b.tile[0] + b.tile[1] + b.footprint[0] + b.footprint[1]));
   const sub = BUILDINGS.find((b) => b.id === 'substation')!;
 
@@ -194,7 +195,7 @@ export default function IsoMap() {
     >
       <Defs />
       <rect width={VB.w} height={VB.h} fill="#FBF4E6" />
-      <g transform={`translate(${view.x} ${view.y}) scale(${view.s})`} style={{ transition: drag.current ? 'none' : 'transform 0.15s' }}>
+      <g className={cinematic ? 'cinematic' : ''} transform={cinematic ? undefined : `translate(${view.x} ${view.y}) scale(${view.s})`} style={{ transition: drag.current ? 'none' : 'transform 0.15s', transformOrigin: `${VB.w / 2}px ${VB.h / 2}px` }}>
         <Canal />
         <Ground />
         <CloudShadows />

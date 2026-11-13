@@ -2,20 +2,22 @@ import { useEffect } from 'react';
 import IsoMap from './map/IsoMap';
 import { useGame } from './store/game';
 import LoadCurve from './ui/LoadCurve';
-import { Intro, Objective, Toasts } from './ui/Overlays';
+import { Intro, Objective, RolePick, Title, Toasts } from './ui/Overlays';
 import SidePanel from './ui/SidePanel';
 import TopBar from './ui/TopBar';
 
 export default function App() {
   const tick = useGame((s) => s.tick);
   const restart = useGame((s) => s.restart);
+  const step = useGame((s) => s.step);
+  const cinema = step === 'title' || step === 'role';
   useEffect(() => {
     const id = setInterval(tick, 900);
     return () => clearInterval(id);
   }, [tick]);
 
   return (
-    <div className="app">
+    <div className={`app ${cinema ? 'cinema' : ''}`}>
       <TopBar />
       <div className="main">
         <div className="stage">
@@ -28,6 +30,8 @@ export default function App() {
       </div>
       <Toasts />
       <Intro />
+      <RolePick />
+      <Title />
     </div>
   );
 }

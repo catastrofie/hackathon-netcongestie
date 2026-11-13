@@ -2,7 +2,11 @@ import { create } from 'zustand';
 import { BUILDINGS, PROJECTS } from '../data/park';
 import { creditsFor, EMPTY_SCENARIO, simulate, type Scenario, type SimResult } from '../sim/simulate';
 
+export type Role = 'company' | 'community';
+
 export type MissionStep =
+  | 'title' // logo screen
+  | 'role' // choose company / community
   | 'intro' // title overlay
   | 'explore' // park idle, meter red, click your factory
   | 'refused' // expansion refused, objective set
@@ -27,6 +31,8 @@ interface GameState {
   selected: string | null;
   hovered: string | null;
   step: MissionStep;
+  role: Role;
+  vote: string | null;
   draft: Scenario; // what the player is assembling at the hub table
   committed: Scenario; // the state of the park after the last end-of-month
   testResult: SimResult | null;
@@ -41,6 +47,8 @@ interface GameState {
   select: (id: string | null) => void;
   hover: (id: string | null) => void;
   setStep: (s: MissionStep) => void;
+  chooseRole: (r: Role) => void;
+  castVote: (id: string) => void;
   requestExpansion: () => void;
   openHub: () => void;
   setDeal: (id: string, kw: number) => void;
@@ -64,7 +72,9 @@ const initial = () => ({
   badges: [] as string[],
   selected: null,
   hovered: null,
-  step: 'intro' as MissionStep,
+  step: 'title' as MissionStep,
+  role: 'company' as Role,
+  vote: null as string | null,
   draft: { ...EMPTY_SCENARIO, deals: {} },
   committed: { ...EMPTY_SCENARIO, deals: {} },
   testResult: null,
@@ -82,6 +92,13 @@ export const useGame = create<GameState>((set, get) => ({
   select: (selected) => set({ selected }),
   hover: (hovered) => set({ hovered }),
   setStep: (step) => set({ step }),
+  chooseRole: (role) => set({ role, step: 'intro' }),
+  castVote: (id) => {
+    const { buyProject, toast } = get();
+    set({ vote: id });
+    toast('info', 'Votes are in: 62% for the heat network, 38% for the battery.');
+    setTimeout(() => buyProject('heatnet'), 1400);
+  },
 
   requestExpansion: () => {
     const { committed, toast } = get();
@@ -158,7 +175,7 @@ export const useGame = create<GameState>((set, get) => ({
   },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   setShowCurve: (showCurve) => set({ showCurve }),
-  restart: () => set({ ...initial(), step: 'explore' }),
+  restart: () => set({ ...initial(), step: 'title' }),
 }));
 
 export const buildingById = (id: string) => BUILDINGS.find((b) => b.id === id)!;

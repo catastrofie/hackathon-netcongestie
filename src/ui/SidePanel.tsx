@@ -116,8 +116,9 @@ function HubTable() {
 }
 
 function TurnReport() {
-  const { lastReport, credits, buyProject, setStep, badges } = useGame();
+  const { lastReport, credits, buyProject, setStep, badges, role, vote, castVote } = useGame();
   if (!lastReport) return null;
+  const community = role === 'community';
   return (
     <div className="panel report">
       <div className="panel-head">
@@ -137,17 +138,28 @@ function TurnReport() {
         </tbody>
       </table>
       <div className="block">
-        <div className="eyebrow">Reinvest · shared projects</div>
-        {PROJECTS.map((p) => (
-          <div key={p.id} className="project">
-            <div>
-              <b>{p.name}</b> <span className="muted">◎ {p.cost}</span>
-              <div className="muted">{p.description}</div>
-              <div className="muted">Community value +{p.communityScore} · {p.co2Tons} t CO₂/yr</div>
+        <div className="eyebrow">{community ? 'Member vote · what should the hub build?' : 'Reinvest · shared projects'}</div>
+        {community && <div className="muted">180 households · 238 members · voting closes at end of month</div>}
+        {PROJECTS.map((p) => {
+          const share = p.id === 'heatnet' ? 62 : 38;
+          return (
+            <div key={p.id} className={`project ${vote === p.id ? 'voted' : ''}`}>
+              <div>
+                <b>{p.name}</b> <span className="muted">◎ {p.cost}</span>
+                <div className="muted">{p.description}</div>
+                <div className="muted">Community value +{p.communityScore} · {p.co2Tons} t CO₂/yr</div>
+                {community && vote && (
+                  <div className="votebar"><div style={{ width: `${share}%` }} /><span>{share}%</span></div>
+                )}
+              </div>
+              {community ? (
+                <button className="primary small" disabled={!!vote} onClick={() => castVote(p.id)}>{vote === p.id ? 'Voted' : 'Vote'}</button>
+              ) : (
+                <button className="primary small" disabled={credits < p.cost} onClick={() => buyProject(p.id)}>Build</button>
+              )}
             </div>
-            <button className="primary small" disabled={credits < p.cost} onClick={() => buyProject(p.id)}>Build</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <button className="link" onClick={() => setStep('explore')}>skip for now</button>
     </div>
