@@ -1,4 +1,5 @@
 import { diamond, iso } from './iso';
+import type { Season } from '../data/park';
 import { IsoBox } from './Buildings';
 
 /** Shared SVG defs: sheen gradients, shadow filter, grass texture. */
@@ -38,15 +39,32 @@ export function Defs() {
   );
 }
 
-export function Tree({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+const LEAVES: Record<Season, [string, string, string]> = {
+  winter: ['#8a8f99', '#9aa0aa', '#7c8290'],
+  spring: ['#7FC98A', '#93D69C', '#6AB578'],
+  summer: ['#5FA463', '#6DB36F', '#4E9457'],
+  autumn: ['#D98B3A', '#E8A64C', '#B8692C'],
+};
+export function Tree({ x, y, s = 1, season = 'summer' }: { x: number; y: number; s?: number; season?: Season }) {
   const p = iso(x, y);
+  const [a, b, c] = LEAVES[season];
+  const bare = season === 'winter';
   return (
     <g transform={`translate(${p.x} ${p.y}) scale(${s})`}>
       <ellipse cy={4} rx={13} ry={5} fill="#000" opacity={0.14} />
       <rect x={-2} y={-14} width={4} height={16} fill="#7a5a3a" />
-      <circle cy={-24} r={14} fill="#5FA463" />
-      <circle cx={-6} cy={-17} r={9} fill="#6DB36F" />
-      <circle cx={5} cy={-19} r={8} fill="#4E9457" />
+      {bare ? (
+        <g stroke="#7a5a3a" strokeWidth={2} strokeLinecap="round" fill="none">
+          <path d="M0 -14 L-8 -28 M0 -16 L7 -30 M0 -20 L-3 -34 M-8 -28 L-12 -34 M7 -30 L12 -34" />
+          <circle cy={-24} r={13} fill={a} opacity={0.35} stroke="none" />
+        </g>
+      ) : (
+        <>
+          <circle cy={-24} r={14} fill={a} />
+          <circle cx={-6} cy={-17} r={9} fill={b} />
+          <circle cx={5} cy={-19} r={8} fill={c} />
+        </>
+      )}
     </g>
   );
 }
@@ -58,7 +76,7 @@ export function Canal() {
       <polygon points={`${a.x},${a.y} ${b.x},${b.y} ${c.x},${c.y} ${e.x},${e.y}`} fill="url(#water)" />
       {[0.2, 0.5, 0.8].map((k) => {
         const p1 = iso(0.5, 9.2 + k * 0.8), p2 = iso(10, 9.2 + k * 0.8);
-        return <line key={k} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#fff" strokeOpacity={0.35} strokeWidth={1.5} strokeDasharray="30 50" className="flow" />;
+        return <line key={k} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#fff" strokeOpacity={0.35} strokeWidth={1.5} strokeDasharray="30 50" className="flow slow" />;
       })}
       {/* bank */}
       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#8c7b5a" strokeWidth={3} />

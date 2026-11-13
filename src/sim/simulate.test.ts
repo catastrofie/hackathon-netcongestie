@@ -37,6 +37,18 @@ describe('simulate', () => {
     expect(r.congestedHours.some((h) => h >= 11 && h <= 15)).toBe(true);
   });
 
+  it('battery in peak-shaving mode replaces one neighbour', () => {
+    const r = simulate({ deals: { koelhuis: 150, logistiek: 120 }, expansion: true, projects: [], battery: 'peak' });
+    expect(r.batteryKw).toBe(135);
+    expect(r.congested).toBe(false);
+  });
+
+  it('battery in stand-by changes nothing', () => {
+    const a = simulate({ ...EMPTY_SCENARIO, battery: 'standby' });
+    const b = simulate(EMPTY_SCENARIO);
+    expect(a.peakKw).toBe(b.peakKw);
+  });
+
   it('energy is conserved by a flex deal', () => {
     const base = simulate(EMPTY_SCENARIO).hourly.reduce((a, b) => a + b, 0);
     const deal = simulate({ deals: { koelhuis: 150 }, expansion: false, projects: [] }).hourly.reduce((a, b) => a + b, 0);

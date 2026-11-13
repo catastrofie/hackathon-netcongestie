@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { NEIGHBOUR_IDS, PROJECTS, GRID_LIMIT_KW } from '../data/park';
+import { BATTERY, BATTERY_MODES, NEIGHBOUR_IDS, PEAK_TARIFF, PEAK_TARIFF_NEXT_YEAR, PROJECTS, GRID_LIMIT_KW } from '../data/park';
 import { fmtHour, simulate } from '../sim/simulate';
 import { buildingById, useGame } from '../store/game';
 
@@ -57,9 +57,11 @@ function BuildingCard() {
 }
 
 function HubTable() {
-  const { draft, setDeal, testScenario, testResult, endMonth, step, select } = useGame();
+  const { draft, setDeal, setBattery, testScenario, testResult, endMonth, step, select, committed } = useGame();
   const parties = ['koelhuis', 'logistiek', 'veldman'].map(buildingById);
-  const freed = parties.reduce((a, b) => a + (draft.deals[b.id] ?? 0), 0);
+  const modules = committed.projects.includes('battery') ? 2 : 1;
+  const batteryKw = (draft.battery ?? 'standby') === 'standby' ? 0 : Math.round((BATTERY.kwh * modules * BATTERY.efficiency) / BATTERY.dischargeHours.length);
+  const freed = parties.reduce((a, b) => a + (draft.deals[b.id] ?? 0), 0) + batteryKw;
   const ok = testResult && !testResult.congested;
   return (
     <div className="panel">
@@ -96,6 +98,25 @@ function HubTable() {
           </div>
         );
       })}
+      <div className="offer-card battery" style={{ borderLeftColor: '#8E6BB8' }}>
+        <div className="offer-top">
+          <div>
+            <b>Energiecoöperatie Stroomwal</b>
+            <div className="muted">Community battery {BATTERY.kw * modules} kW / {BATTERY.kwh * modules} kWh · owned by all members</div>
+          </div>
+          <span className="pill purple">🔋 {batteryKw > 0 ? `−${batteryKw} kW at peak` : 'idle'}</span>
+        </div>
+        <div className="modes">
+          {BATTERY_MODES.map((m) => (
+            <label key={m.id} className={`mode ${(draft.battery ?? 'standby') === m.id ? 'on' : ''}`}>
+              <input type="radio" name="battery" checked={(draft.battery ?? 'standby') === m.id} onChange={() => setBattery(m.id)} />
+              <b>{m.label}</b>
+              <span>{m.detail}</span>
+            </label>
+          ))}
+        </div>
+        <div className="counter">Wants: 40% of the kW-max charge the companies avoid flows back to the cooperative. Usage is metered per member.</div>
+      </div>
       <div className="sum">
         <span>Freed at 17:00</span>
         <b className={freed >= 400 ? 'ok' : ''}>{freed} / 400 kW</b>
@@ -131,13 +152,16 @@ function TurnReport() {
         <tbody>
           <tr><td>Peak at 17:00</td><td><b>{Math.round(lastReport.peakBefore)} → {Math.round(lastReport.peakAfter)} kW</b></td></tr>
           <tr><td>Expansion</td><td><b className="ok">Approved · +300 kW</b></td></tr>
-          <tr><td>Capacity freed</td><td><b>{lastReport.freedKw} kW</b></td></tr>
+          <tr><td>Capacity freed</td><td><b>{lastReport.freedKw} kW{lastReport.batteryKw ? ` (battery ${lastReport.batteryKw})` : ''}</b></td></tr>
+          <tr><td>kW-max charge avoided</td><td><b className="credits">◎ {lastReport.peakSaved}</b> <span className="muted">/month</span></td></tr>
+          <tr><td>…at next year's tariff (+55%)</td><td><b className="credits">◎ {lastReport.peakSavedNextYear}</b> <span className="muted">/month</span></td></tr>
           <tr><td>Diesel generator avoided</td><td><b>{lastReport.dieselAvoided} · ~60 t CO₂/yr</b></td></tr>
           <tr><td>Hub Credits earned</td><td><b className="credits">◎ {lastReport.credits}</b></td></tr>
           <tr><td>Badge</td><td><b>🏅 {badges[badges.length - 1]}</b></td></tr>
         </tbody>
       </table>
       <div className="block">
+        <div className="muted" style={{ marginBottom: 8 }}>kW-max tariff: ◎ {PEAK_TARIFF} per kW of monthly peak now, ◎ {PEAK_TARIFF_NEXT_YEAR} next year. Every kW shaved keeps paying.</div>
         <div className="eyebrow">{community ? 'Member vote · what should the hub build?' : 'Reinvest · shared projects'}</div>
         {community && <div className="muted">180 households · 238 members · voting closes at end of month</div>}
         {PROJECTS.map((p) => {

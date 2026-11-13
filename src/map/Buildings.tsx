@@ -266,3 +266,25 @@ export function Pad({ x, y, w, d, color, opacity = 0.9 }: { x: number; y: number
 }
 
 export const tileSize = { w: TILE_W, h: TILE_H };
+
+export function BatteryUnit({ x, y, active, modules = 1 }: { x: number; y: number; active: boolean; modules?: number }) {
+  return (
+    <g>
+      {Array.from({ length: modules }).map((_, i) => (
+        <g key={i}>
+          <IsoBox x={x + i * 0.55} y={y} w={0.5} d={0.9} h={30} color="#E9EEF5" />
+          {(() => {
+            const e = iso(x + i * 0.55, y + 0.9), c = iso(x + i * 0.55 + 0.5, y + 0.9);
+            return (
+              <>
+                <polygon points={`${e.x},${e.y - 22} ${c.x},${c.y - 22} ${c.x},${c.y - 14} ${e.x},${e.y - 14}`} fill="#3DBE6E" />
+                <circle cx={(e.x + c.x) / 2} cy={e.y - 8} r={3} fill={active ? '#3DBE6E' : '#9aa3b2'} className={active ? 'blink' : ''} />
+              </>
+            );
+          })()}
+        </g>
+      ))}
+      <text x={iso(x + 0.25 * modules + 0.1, y).x} y={iso(x + 0.25 * modules + 0.1, y).y - 40} textAnchor="middle" fontSize={16} className={active ? 'float' : ''}>🔋</text>
+    </g>
+  );
+}

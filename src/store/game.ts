@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { BUILDINGS, PROJECTS } from '../data/park';
+import { BUILDINGS, PROJECTS, seasonOfMonth, type BatteryMode, type Season } from '../data/park';
 import { creditsFor, EMPTY_SCENARIO, simulate, type Scenario, type SimResult } from '../sim/simulate';
 
 export type Role = 'company' | 'community';
@@ -33,12 +33,13 @@ interface GameState {
   step: MissionStep;
   role: Role;
   vote: string | null;
+  season: Season;
   draft: Scenario; // what the player is assembling at the hub table
   committed: Scenario; // the state of the park after the last end-of-month
   testResult: SimResult | null;
   toasts: Toast[];
   showCurve: boolean;
-  lastReport: { credits: number; freedKw: number; dieselAvoided: number; peakBefore: number; peakAfter: number } | null;
+  lastReport: { credits: number; freedKw: number; dieselAvoided: number; peakSaved: number; peakSavedNextYear: number; peakBefore: number; peakAfter: number; batteryKw: number } | null;
 
   // actions
   setHour: (h: number) => void;
@@ -48,10 +49,12 @@ interface GameState {
   hover: (id: string | null) => void;
   setStep: (s: MissionStep) => void;
   chooseRole: (r: Role) => void;
+  setSeason: (s: Season) => void;
   castVote: (id: string) => void;
   requestExpansion: () => void;
   openHub: () => void;
   setDeal: (id: string, kw: number) => void;
+  setBattery: (m: BatteryMode) => void;
   testScenario: () => void;
   endMonth: () => void;
   buyProject: (id: string) => void;
@@ -75,8 +78,9 @@ const initial = () => ({
   step: 'title' as MissionStep,
   role: 'company' as Role,
   vote: null as string | null,
-  draft: { ...EMPTY_SCENARIO, deals: {} },
-  committed: { ...EMPTY_SCENARIO, deals: {} },
+  season: 'winter' as Season,
+  draft: { ...EMPTY_SCENARIO, deals: {}, season: 'winter' as Season, battery: 'standby' as BatteryMode },
+  committed: { ...EMPTY_SCENARIO, deals: {}, season: 'winter' as Season, battery: 'standby' as BatteryMode },
   testResult: null,
   toasts: [] as Toast[],
   showCurve: false,
@@ -93,6 +97,8 @@ export const useGame = create<GameState>((set, get) => ({
   hover: (hovered) => set({ hovered }),
   setStep: (step) => set({ step }),
   chooseRole: (role) => set({ role, step: 'intro' }),
+  setSeason: (season) =>
+    set((s) => ({ season, draft: { ...s.draft, season }, committed: { ...s.committed, season }, testResult: null })),
   castVote: (id) => {
     const { buyProject, toast } = get();
     set({ vote: id });
@@ -117,6 +123,8 @@ export const useGame = create<GameState>((set, get) => ({
   setDeal: (id, kw) =>
     set((s) => ({ draft: { ...s.draft, deals: { ...s.draft.deals, [id]: kw } }, testResult: null })),
 
+  setBattery: (battery) => set((s) => ({ draft: { ...s.draft, battery }, testResult: null })),
+
   testScenario: () => {
     const { draft, toast } = get();
     const scenario = { ...draft, expansion: true };
@@ -132,7 +140,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   endMonth: () => {
     const { draft, committed, toast } = get();
-    const scenario = { ...draft, expansion: true, projects: committed.projects };
+    const scenario = { ...draft, expansion: true, projects: committed.projects, season: committed.season };
     const r = simulate(scenario);
     if (r.congested) {
       toast('error', 'The grid operator will not approve a congested plan. Adjust the deals first.');
@@ -149,7 +157,7 @@ export const useGame = create<GameState>((set, get) => ({
       showCurve: false,
       clockRunning: true,
       selected: null,
-      lastReport: { ...c, peakBefore: before.peakKw, peakAfter: r.peakKw },
+      lastReport: { ...c, peakBefore: before.peakKw, peakAfter: r.peakKw, batteryKw: r.batteryKw },
     }));
     setTimeout(() => toast('badge', 'Badge earned: First Handshake'), 900);
   },
@@ -160,11 +168,12 @@ export const useGame = create<GameState>((set, get) => ({
     if (!p || credits < p.cost) return;
     const scenario = { ...committed, projects: [...committed.projects, id] };
     set({ credits: credits - p.cost, committed: scenario, draft: scenario, step: 'month2' });
-    toast('success', id === 'heatnet' ? 'Heat network built: 180 homes off gas.' : 'Community battery installed.');
+    toast('success', id === 'heatnet' ? 'Heat network built: 180 homes off gas.' : 'Second battery module installed: 600 kW / 1,200 kWh.');
   },
 
   startMonth2: () => {
-    set({ month: 2, step: 'explore', selected: null });
+    const season = seasonOfMonth(2);
+    set((s) => ({ month: 2, step: 'explore', selected: null, season, draft: { ...s.draft, season }, committed: { ...s.committed, season } }));
     get().toast('info', 'Month 2 — Drenthe Logistiek wants 10 more e-trucks (+200 kW). Help them.');
   },
 

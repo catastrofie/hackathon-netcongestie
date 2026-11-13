@@ -9,7 +9,7 @@ Hackathon prototype for PowerUp Drenthe, Track 3 (*Growth within limits*). An is
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 7 simulation tests (vitest)
+npm test           # 9 simulation tests (vitest)
 npm run build      # static site in dist/
 ```
 
@@ -36,7 +36,9 @@ npm run build      # static site in dist/
 
 - Capacity is per hour; surplus energy at noon does nothing for 17:00.
 - A flexibility deal moves kW out of some hours and into others (energy conserved); the new hours are checked too.
-- The battery shifts in time at 90% round-trip efficiency.
+- The cooperative's battery (300 kW / 600 kWh) is a playable asset at the Hub Table: stand-by, peak shaving (charge at night) or solar self-use (charge at midday), at 90% round-trip efficiency.
+- A kW-max charge in Hub Credits (0.2 per kW of monthly peak, +55% next year) makes every kW shaved pay every month. No currencies in the game, only Hub Credits.
+- Seasons change solar yield, wind output, daylight and heating/cooling demand; the mission is tuned for winter.
 - Waste heat replaces gas and scores community value; it does not free grid capacity (except ~50 kW of greenhouse electric heating).
 
 ## Ideas for the next hours

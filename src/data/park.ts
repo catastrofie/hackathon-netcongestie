@@ -55,12 +55,59 @@ const profile = (base: number, overrides: Record<string, number>) => {
 };
 
 export const GRID_LIMIT_KW = 2000;
+
+/** kW-max charge: Hub Credits paid per kW of monthly peak. Next year's tariff is 55% higher. */
+export const PEAK_TARIFF = 0.2;
+export const PEAK_TARIFF_NEXT_YEAR = Math.round(PEAK_TARIFF * 1.552 * 1000) / 1000;
+
+/** The cooperative's community battery, a shared hub asset from the start. */
+export type BatteryMode = 'standby' | 'peak' | 'solar';
+export const BATTERY = { kw: 300, kwh: 600, efficiency: 0.9, chargeHoursPeak: [0, 1, 2, 3], chargeHoursSolar: [11, 12, 13, 14], dischargeHours: [16, 17, 18, 19] };
+export const BATTERY_MODES: { id: BatteryMode; label: string; detail: string }[] = [
+  { id: 'standby', label: 'Stand-by', detail: 'Battery idle. Nothing changes.' },
+  { id: 'peak', label: 'Peak shaving', detail: 'Charge at night, discharge 16:00–20:00. Cuts the park peak and the kW-max charge.' },
+  { id: 'solar', label: 'Solar self-use', detail: 'Charge on midday solar and wind, discharge 16:00–20:00. Raises local energy share.' },
+];
 export const PEAK_HOUR = 17;
 
-// Winter solar yield per kWp, fraction of nameplate, by hour.
-export const SOLAR_PROFILE = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0.02, 0.1, 0.2, 0.28, 0.3, 0.3, 0.25, 0.15, 0.05, 0, 0, 0, 0, 0, 0, 0,
-];
+export type Season = 'winter' | 'spring' | 'summer' | 'autumn';
+export const SEASONS: Season[] = ['winter', 'spring', 'summer', 'autumn'];
+export const SEASON_LABEL: Record<Season, string> = { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' };
+export const seasonOfMonth = (m: number): Season => (['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'] as Season[])[(m - 1) % 12];
+
+/** Solar yield per kWp (fraction of nameplate) by hour, per season. */
+export const SOLAR_PROFILE: Record<Season, number[]> = {
+  winter: [0, 0, 0, 0, 0, 0, 0, 0, 0.02, 0.1, 0.2, 0.28, 0.3, 0.3, 0.25, 0.15, 0.05, 0, 0, 0, 0, 0, 0, 0],
+  spring: [0, 0, 0, 0, 0, 0, 0.02, 0.1, 0.25, 0.4, 0.52, 0.6, 0.62, 0.6, 0.52, 0.4, 0.25, 0.1, 0.02, 0, 0, 0, 0, 0],
+  summer: [0, 0, 0, 0, 0, 0.03, 0.12, 0.28, 0.45, 0.6, 0.7, 0.76, 0.78, 0.76, 0.7, 0.6, 0.45, 0.28, 0.12, 0.03, 0, 0, 0, 0],
+  autumn: [0, 0, 0, 0, 0, 0, 0, 0.03, 0.12, 0.25, 0.35, 0.42, 0.44, 0.42, 0.35, 0.22, 0.08, 0, 0, 0, 0, 0, 0, 0],
+};
+
+/** The hub's wind turbine (shared asset of the energy cooperative). */
+export const WIND_KW = 250;
+export const WIND_CF: Record<Season, number> = { winter: 0.42, spring: 0.3, summer: 0.2, autumn: 0.38 };
+/** Diurnal wind shape (afternoons a little windier). */
+export const WIND_SHAPE = [0.95, 0.95, 0.9, 0.9, 0.9, 0.9, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.2, 1.2, 1.15, 1.1, 1.05, 1, 0.95, 0.95, 0.95, 0.95, 0.95];
+
+/** Daylight hours per season (for the scene tint). */
+export const DAYLIGHT: Record<Season, [number, number]> = { winter: [8, 17], spring: [6, 20], summer: [5, 22], autumn: [7, 18] };
+
+/** Seasonal demand adjustments, kW added per hour (negative = less). Keyed by building id. */
+export const SEASON_DEMAND: Record<Season, Record<string, { hours: [number, number]; kw: number }[]>> = {
+  winter: {
+    coop: [{ hours: [16, 21], kw: 60 }, { hours: [6, 8], kw: 20 }], // heat pumps
+    kassen: [{ hours: [15, 22], kw: 50 }], // grow lights, heating
+    bakkerij: [{ hours: [0, 23], kw: 0 }],
+  },
+  spring: { coop: [{ hours: [16, 21], kw: 15 }], kassen: [{ hours: [16, 21], kw: 10 }] },
+  summer: {
+    koelhuis: [{ hours: [11, 18], kw: 90 }], // cooling load
+    coop: [{ hours: [16, 21], kw: -30 }],
+    kassen: [{ hours: [16, 21], kw: -120 }, { hours: [11, 15], kw: 40 }], // no lighting, some cooling
+    logistiek: [{ hours: [11, 15], kw: 30 }],
+  },
+  autumn: { coop: [{ hours: [16, 21], kw: 30 }], kassen: [{ hours: [16, 21], kw: 20 }] },
+};
 
 export const EXPANSION = { id: 'veldman', extraKw: 300, hours: [8, 19] as [number, number] };
 
@@ -94,7 +141,7 @@ export const BUILDINGS: Building[] = [
     footprint: [2, 2],
     color: '#5B8DB8',
     tagline: 'Cold storage · 24/7 cold chain',
-    load: profile(380, { '8-10': 420, '11-13': 460, '14': 420, '15': 400, '16-19': 480, '20-21': 420 }),
+    load: profile(380, { '8-10': 420, '11-13': 460, '14': 420, '15': 400, '16-17': 480, '18-19': 460, '20-21': 420 }),
     solarKwp: 200,
     flex: {
       label: 'Pre-cool at midday, coast through the peak',
@@ -189,9 +236,9 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'battery',
-    name: 'Community battery 300 kW / 600 kWh',
+    name: 'Second battery module (+300 kW / +600 kWh)',
     cost: 100,
-    description: 'Charges on midday solar, discharges 16:00–20:00. Frees ~135 kW at the peak; mostly benefits the companies.',
+    description: 'Doubles the cooperative’s battery. Twice the peak shaving, twice the kW-max savings; mostly benefits the companies.',
     communityScore: 15,
     co2Tons: 60,
   },

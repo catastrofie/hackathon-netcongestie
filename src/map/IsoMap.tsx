@@ -1,26 +1,26 @@
 import { useMemo, useRef, useState, type WheelEvent, type MouseEvent } from 'react';
-import { BUILDINGS, GRID_LIMIT_KW, type Building } from '../data/park';
+import { BUILDINGS, DAYLIGHT, GRID_LIMIT_KW, type Building, type Season } from '../data/park';
 import { simulate } from '../sim/simulate';
 import { useGame } from '../store/game';
-import { Bakery, ColdStore, Factory, Greenhouse, Houses, Logistics, Pad, Substation, type BuildingVisual, type VisualState } from './Buildings';
+import { Bakery, BatteryUnit, ColdStore, Factory, Greenhouse, Houses, Logistics, Pad, Substation, type BuildingVisual, type VisualState } from './Buildings';
 import { diamond, iso } from './iso';
-import { Canal, CloudShadows, Defs, Feeder, Fence, GravelPad, ParkingLines, Traffic, Tree, WindTurbine } from './Props';
+import { Canal, Defs, Feeder, Fence, GravelPad, ParkingLines, Traffic, Tree, WindTurbine } from './Props';
 
 const MAP_W = 10;
 const MAP_H = 9;
 const VB = { w: 1640, h: 820 };
 
-function dayTint(hour: number): { color: string; opacity: number } {
-  if (hour >= 22 || hour < 5) return { color: '#2a3568', opacity: 0.45 };
-  if (hour < 7) return { color: '#4d5fa3', opacity: 0.32 };
-  if (hour < 9) return { color: '#ffd9a0', opacity: 0.16 };
-  if (hour < 16) return { color: '#ffffff', opacity: 0 };
-  if (hour < 18) return { color: '#ffc078', opacity: 0.22 };
-  if (hour < 20) return { color: '#c98aa8', opacity: 0.2 };
+function dayTint(hour: number, season: Season): { color: string; opacity: number } {
+  const [rise, set] = DAYLIGHT[season];
+  if (hour < rise - 1 || hour > set + 2) return { color: '#2a3568', opacity: 0.45 };
+  if (hour < rise + 1) return { color: '#ffd9a0', opacity: 0.16 };
+  if (hour < set - 1) return season === 'summer' ? { color: '#fff3c4', opacity: 0.08 } : { color: '#ffffff', opacity: 0 };
+  if (hour <= set) return { color: '#ffc078', opacity: 0.22 };
+  if (hour <= set + 1) return { color: '#c98aa8', opacity: 0.2 };
   return { color: '#3a4580', opacity: 0.35 };
 }
 
-function Ground() {
+function Ground({ season }: { season: Season }) {
   const tiles = [];
   for (let x = 0; x < MAP_W; x++)
     for (let y = 0; y < MAP_H; y++) {
@@ -33,7 +33,7 @@ function Ground() {
     <g>
       {/* grass base with texture */}
       <g filter="url(#grass)">
-        <polygon points={diamond(0, 0, MAP_W, MAP_H)} fill="#A6CF8B" />
+        <polygon points={diamond(0, 0, MAP_W, MAP_H)} fill={{ winter: '#A9C59A', spring: '#A6CF8B', summer: '#9FC77F', autumn: '#B6C48A' }[season]} />
       </g>
       {/* soft plot edges */}
       <polygon points={diamond(0, 0, MAP_W, MAP_H)} fill="none" stroke="#8fbd77" strokeWidth={3} />
@@ -67,7 +67,7 @@ function Ground() {
       <Fence x={7.35} y={4.35} w={1.5} d={1.5} />
       {/* trees */}
       {([[9.5, 0.4, 1], [9.4, 3.7, 0.9], [8.7, 7.6, 1.1], [9.3, 8.3, 0.9], [0.4, 8.5, 1], [7.9, 8.6, 0.8], [0.3, 2.95, 0.9], [3.3, 8.5, 1], [6.4, 6.3, 0.8], [8.9, 6.6, 0.9], [2.8, 3.2, 0.7], [7.0, 3.3, 0.8], [9.6, 2.0, 0.9], [8.2, 2.9, 0.8]] as [number, number, number][]).map(([x, y, s], i) => (
-        <Tree key={i} x={x} y={y} s={s} />
+        <Tree key={i} x={x} y={y} s={s} season={season} />
       ))}
     </g>
   );
@@ -133,8 +133,8 @@ function DealLinks({ dealsWith }: { dealsWith: string[] }) {
 }
 
 export default function IsoMap() {
-  const { hour, hovered, selected, committed, step, select, hover, testResult } = useGame();
-  const night = hour >= 17 || hour < 7;
+  const { hour, hovered, selected, committed, step, select, hover, testResult, season } = useGame();
+  const night = hour >= DAYLIGHT[season][1] || hour < DAYLIGHT[season][0];
   const sim = useMemo(() => simulate(committed), [committed]);
   const shown = step === 'tested' && testResult ? testResult : sim;
   const heat = committed.projects.includes('heatnet');
@@ -176,7 +176,7 @@ export default function IsoMap() {
     const kw = committed.deals[b.id] ?? 0;
     states[b.id] = kw > 0 ? 'deal' : congestedNow && ['veldman', 'substation', 'koelhuis', 'logistiek'].includes(b.id) ? 'congested' : 'idle';
   }
-  const tint = step === 'title' || step === 'role' ? { color: '#ffb866', opacity: 0.26 } : dayTint(hour);
+  const tint = step === 'title' || step === 'role' ? { color: '#ffb866', opacity: 0.26 } : dayTint(hour, season);
   const cinematic = step === 'title' || step === 'role';
   const sorted = [...BUILDINGS].sort((a, b) => a.tile[0] + a.tile[1] + a.footprint[0] + a.footprint[1] - (b.tile[0] + b.tile[1] + b.footprint[0] + b.footprint[1]));
   const sub = BUILDINGS.find((b) => b.id === 'substation')!;
@@ -197,8 +197,7 @@ export default function IsoMap() {
       <rect width={VB.w} height={VB.h} fill="#FBF4E6" />
       <g className={cinematic ? 'cinematic' : ''} transform={cinematic ? undefined : `translate(${view.x} ${view.y}) scale(${view.s})`} style={{ transition: drag.current ? 'none' : 'transform 0.15s', transformOrigin: `${VB.w / 2}px ${VB.h / 2}px` }}>
         <Canal />
-        <Ground />
-        <CloudShadows />
+        <Ground season={season} />
         <Feeder to={center(sub)} congested={states.substation === 'congested'} />
         <Cables states={states} heat={heat} />
         <WindTurbine x={9.6} y={0.9} />
@@ -238,7 +237,12 @@ export default function IsoMap() {
                 {b.type === 'logistics' && <Logistics v={v} />}
                 {b.type === 'bakery' && <Bakery v={v} heat={heat} />}
                 {b.type === 'greenhouse' && <Greenhouse v={v} heat={heat} />}
-                {b.type === 'community' && <Houses v={v} heat={heat} />}
+                {b.type === 'community' && (
+                  <>
+                    <Houses v={v} heat={heat} />
+                    <BatteryUnit x={7.5} y={7.45} active={(committed.battery ?? 'standby') !== 'standby'} modules={committed.projects.includes('battery') ? 2 : 1} />
+                  </>
+                )}
                 {b.type === 'substation' && <Substation v={v} />}
               </g>
               {b.id !== 'substation' && (
