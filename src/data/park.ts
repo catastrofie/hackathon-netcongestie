@@ -24,6 +24,7 @@ export interface FlexOffer {
 export interface Building {
   id: string;
   name: string;
+  short: string; // 3-word hover label
   type: BuildingType;
   tile: [number, number];
   footprint: [number, number];
@@ -114,6 +115,7 @@ export const EXPANSION = { id: 'veldman', extraKw: 300, hours: [8, 19] as [numbe
 export const BUILDINGS: Building[] = [
   {
     id: 'veldman',
+    short: 'Metal · you',
     name: 'Veldman Metaal',
     type: 'factory',
     tile: [0.4, 0.3],
@@ -135,6 +137,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'koelhuis',
+    short: 'Cold storage',
     name: 'Koelhuis Noord',
     type: 'coldstore',
     tile: [4.4, 0.5],
@@ -156,6 +159,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'logistiek',
+    short: 'Logistics · e-trucks',
     name: 'Drenthe Logistiek',
     type: 'logistics',
     tile: [0.5, 4],
@@ -177,6 +181,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'bakkerij',
+    short: 'Bakery · waste heat',
     name: 'Bakkerij Smid',
     type: 'bakery',
     tile: [4.4, 4.3],
@@ -189,6 +194,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'kassen',
+    short: 'Greenhouse',
     name: 'Van der Wal Kassen',
     type: 'greenhouse',
     tile: [7.2, 0.7],
@@ -201,6 +207,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'coop',
+    short: 'Energy community',
     name: 'Energiecoöperatie Stroomwal',
     type: 'community',
     tile: [1.2, 7.4],
@@ -213,6 +220,7 @@ export const BUILDINGS: Building[] = [
   },
   {
     id: 'substation',
+    short: 'Grid connection',
     name: 'Enexis MV feeder',
     type: 'substation',
     tile: [7.6, 4.6],

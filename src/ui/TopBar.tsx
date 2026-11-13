@@ -57,20 +57,22 @@ export default function TopBar() {
         </div>
         <input type="range" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} className="hour-slider" aria-label="hour of day" />
         <div className="meter-foot">
-          <span>{Math.round(pct * 100)}% at {fmtHour(hour)} · kW-max charge <b className="credits">◎ {shown.peakCharge}</b>/month <span title="Next year's kW-max tariff is 55% higher">(next year ◎ {shown.peakChargeNextYear})</span></span>
-          <span>{shown.congested ? `⚠ ${shown.feedIn ? 'feed-in' : 'congested'} ${shown.congestedHours.map(fmtHour).join(', ')}` : '✓ under the limit all day'}</span>
+          <span>{Math.round(pct * 100)}% at {fmtHour(hour)}</span>
+          <span title="kW-max charge: what the park pays per month for its highest peak. Next year's tariff is 55% higher.">kW-max charge <b className="credits">◎ {shown.peakCharge}</b>/mo · next yr ◎ {shown.peakChargeNextYear}</span>
+          <span className={shown.congested ? 'bad' : 'ok'}>
+            {shown.congested
+              ? `⚠ ${shown.feedIn ? 'feed-in' : 'congested'} ${fmtHour(shown.congestedHours[0])}–${fmtHour(shown.congestedHours[shown.congestedHours.length - 1] + 1)}`
+              : '✓ under the limit all day'}
+          </span>
         </div>
       </div>
 
       <div className="impact card">
-        <div className="eyebrow">Community impact · est.</div>
-        <div className="impact-grid">
-          <div><span>Peak cut</span><b className={impact.peakCut > 0 ? 'ok' : ''}>{impact.peakCut > 0 ? `−${impact.peakCut}%` : '0%'}</b></div>
-          <div><span>CO₂ avoided</span><b className={impact.co2 > 0 ? 'ok' : ''}>{impact.co2} t/yr</b></div>
-          <div><span>Homes off gas</span><b className={impact.homes > 0 ? 'ok' : ''}>{impact.homes}</b></div>
-          <div><span>Local energy</span><b className="ok">{Math.round(sim.localShare * 100)}%</b></div>
-          <div><span>Community</span><b className={impact.community > 0 ? 'ok' : ''}>+{impact.community}</b></div>
-        </div>
+        <div className="eyebrow impact-title">Community impact · est.</div>
+        <div className="tile"><b className={impact.peakCut > 0 ? 'ok' : ''}>{impact.peakCut > 0 ? `−${impact.peakCut}%` : '0%'}</b><span>Peak cut</span></div>
+        <div className="tile"><b className={impact.co2 > 0 ? 'ok' : ''}>{impact.co2}<small> t</small></b><span>CO₂ avoided / yr</span></div>
+        <div className="tile"><b className={impact.homes > 0 ? 'ok' : ''}>{impact.homes}</b><span>Homes off gas</span></div>
+        <div className="tile"><b className="ok">{Math.round(sim.localShare * 100)}%</b><span>Local energy</span></div>
       </div>
       <div className="stats card">
         <div><div className="muted">Credits</div><div className="big credits">◎ {credits}</div></div>

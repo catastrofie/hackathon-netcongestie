@@ -29,12 +29,9 @@ export default function LoadCurve() {
           {testResult && preview && (
             <div className="preview">
               <div><span>Peak</span><b>{Math.round(before.peakKw)} → {Math.round(testResult.peakKw)} kW</b></div>
-              <div><span>Freed at {fmtHour(before.peakHour)}</span><b>{preview.freedKw} kW</b></div>
               <div><span>Expansion</span><b className={testResult.congested ? 'bad' : 'ok'}>{testResult.congested ? 'blocked' : 'fits ✓'}</b></div>
-              {testResult.batteryKw > 0 && <div><span>Battery</span><b>−{testResult.batteryKw} kW</b></div>}
-              <div><span>kW-max saved</span><b className="credits">◎ {preview.peakSaved}/mo <span className="muted">(◎ {preview.peakSavedNextYear} next yr)</span></b></div>
+              <div><span>kW-max saved</span><b className="credits">◎ {preview.peakSaved}<small>/mo</small></b></div>
               <div><span>Credits if signed</span><b className="credits">◎ {testResult.congested ? 0 : preview.credits}</b></div>
-              <div><span>Diesel avoided</span><b>{testResult.congested ? '—' : '1 · 60 t CO₂/yr'}</b></div>
             </div>
           )}
           <ResponsiveContainer width="100%" height={150}>

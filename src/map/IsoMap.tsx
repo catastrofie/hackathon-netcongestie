@@ -253,6 +253,13 @@ export default function IsoMap() {
                   </text>
                 </g>
               )}
+              {isHover && (
+                <g className="nametag" style={{ pointerEvents: 'none' }}>
+                  <rect x={c.x - 90} y={c.y - 118} width={180} height={44} rx={10} fill="#fff" stroke={b.color} strokeWidth={2} filter="url(#shadow)" />
+                  <text x={c.x} y={c.y - 99} textAnchor="middle" fontSize={14} fill="#1f2937" fontWeight={800}>{b.name}</text>
+                  <text x={c.x} y={c.y - 83} textAnchor="middle" fontSize={11} fill="#6b7280" fontWeight={600}>{b.short}</text>
+                </g>
+              )}
             </g>
           );
         })}
